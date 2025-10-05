@@ -15,6 +15,7 @@ export class AppComponent implements OnInit {
   isLoading = true;
   isLoadingData = false;
   currentLocationData: LocationData | null = null;
+  availableAreas: any[] = [];
 
   constructor(
     private climateDataService: ClimateDataService,
@@ -31,17 +32,56 @@ export class AppComponent implements OnInit {
   onPlanetClick() {
     this.isLoadingData = true;
     
-    this.climateDataService.getRandomLocationData().subscribe({
+    // First debug the database contents
+    this.climateDataService.debugDatabaseContents().subscribe({
+      next: (debugData) => {
+        console.log('✅ Database debug completed');
+        
+        // Now load available areas for user selection
+        this.climateDataService.getAvailableAreas(30).subscribe({
+          next: (areas) => {
+            console.log(`🎯 Final areas received: ${areas.length}`);
+            this.availableAreas = areas;
+            this.currentScreen = 'area-selection';
+            this.isLoadingData = false;
+          },
+          error: (error) => {
+            console.error('Error loading available areas:', error);
+            this.isLoadingData = false;
+          }
+        });
+      },
+      error: (error) => {
+        console.error('Error debugging database:', error);
+        // Still try to load areas even if debug fails
+        this.climateDataService.getAvailableAreas(30).subscribe({
+          next: (areas) => {
+            this.availableAreas = areas;
+            this.currentScreen = 'area-selection';
+            this.isLoadingData = false;
+          },
+          error: (error) => {
+            console.error('Error loading available areas:', error);
+            this.isLoadingData = false;
+          }
+        });
+      }
+    });
+  }
+
+  onAreaSelected(area: any) {
+    this.isLoadingData = true;
+    
+    // Get detailed climate data for the selected area
+    this.climateDataService.getLocationDataForArea(area).subscribe({
       next: (locationData) => {
-        if (locationData) {
-          this.currentLocationData = locationData;
-          this.selectedArea = this.convertToEarthArea(locationData);
-          this.currentScreen = 'farming';
-        }
+        this.currentLocationData = locationData;
+        this.selectedArea = this.convertToEarthArea(locationData);
+        this.currentScreen = 'farming';
         this.isLoadingData = false;
       },
       error: (error) => {
-        console.error('Error loading climate data:', error);
+        console.error('Error loading area details:', error);
         this.isLoadingData = false;
       }
     });
@@ -67,10 +107,7 @@ export class AppComponent implements OnInit {
     };
   }
 
-  onAreaSelected(area: EarthArea) {
-    this.selectedArea = area;
-    this.currentScreen = 'farming';
-  }
+
 
   onStartQuiz() {
     this.currentScreen = 'quiz';

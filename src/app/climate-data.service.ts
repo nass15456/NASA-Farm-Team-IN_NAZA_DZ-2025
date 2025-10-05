@@ -69,6 +69,203 @@ export class ClimateDataService {
   constructor(private http: HttpClient) {}
 
   /**
+   * Debug method to check what's in the database
+   */
+  debugDatabaseContents(): Observable<any> {
+    console.log('🔍 DEBUG: Checking database contents...');
+    
+    return this.http.get<any[]>(`${this.POSTGREST_URL}/lst_statistics`)
+      .pipe(
+        map(data => {
+          console.log('📊 RAW DATABASE DUMP:');
+          console.log('Total records:', data?.length || 0);
+          
+          if (data && data.length > 0) {
+            data.forEach((record, index) => {
+              console.log(`Record ${index + 1}:`, {
+                latitude: record.latitude,
+                longitude: record.longitude,
+                band: record.band,
+                value_mean: record.value_mean,
+                value_max: record.value_max,
+                value_min: record.value_min
+              });
+            });
+            
+            // Check unique coordinates
+            const coords = data.map((r: any) => `${r.latitude},${r.longitude}`);
+            const uniqueCoords = [...new Set(coords)];
+            console.log('🌍 Unique coordinate pairs:', uniqueCoords);
+          }
+          
+          return data;
+        }),
+        catchError(error => {
+          console.error('❌ Database debug error:', error);
+          return of([]);
+        })
+      );
+  }
+
+  /**
+   * Get available areas from database for user selection
+   */
+  getAvailableAreas(limit: number = 50): Observable<EarthAreaWithClimate[]> {
+    console.log('📋 Fetching available areas from NASA database...');
+    
+    // For small databases, get all available data without artificial limits
+    return this.http.get<any[]>(`${this.POSTGREST_URL}/lst_statistics?select=latitude,longitude,band`)
+      .pipe(
+        map(data => {
+          if (!data || data.length === 0) {
+            console.warn('⚠️ No areas found in database, using fallback areas');
+            return this.getFallbackAreas();
+          }
+
+          console.log(`📊 Raw database records: ${data.length}`);
+          
+          // Get all unique coordinates without aggressive filtering
+          const uniqueLocations = this.getAllUniqueLocations(data);
+          
+          console.log(`🌍 Found ${uniqueLocations.length} unique locations from ${data.length} records`);
+          console.log('📍 Locations:', uniqueLocations.map((loc: {latitude: number, longitude: number}) => `${loc.latitude},${loc.longitude}`));
+          
+          if (uniqueLocations.length === 0) {
+            console.warn('⚠️ No unique locations found, using fallback');
+            return this.getFallbackAreas();
+          }
+          
+          return uniqueLocations.map((location: {latitude: number, longitude: number}, index: number) => {
+            const locationName = this.getLocationName(location.latitude, location.longitude);
+            const climateZone = this.getClimateZone(location.latitude);
+            
+            console.log(`🏷️ Creating area ${index + 1}: ${locationName} at ${location.latitude},${location.longitude}`);
+            
+            return {
+              id: index + 1,
+              name: locationName,
+              latitude: location.latitude,
+              longitude: location.longitude,
+              dayTemperature: 0, // Will be calculated when selected
+              nightTemperature: 0, // Will be calculated when selected
+              soilType: this.getSoilType(location.latitude, location.longitude),
+              description: this.getAreaDescription(locationName, 20, climateZone),
+              climateZone
+            } as EarthAreaWithClimate;
+          });
+        }),
+        catchError(error => {
+          console.error('❌ Error fetching areas:', error);
+          return of(this.getFallbackAreas());
+        })
+      );
+  }
+
+  /**
+   * Get location data for a specific selected area
+   */
+  getLocationDataForArea(area: EarthAreaWithClimate): Observable<LocationData> {
+    console.log(`🎯 Getting detailed data for: ${area.name}`);
+    
+    return this.processLocationDataWithRealTemperatures(area.latitude, area.longitude).pipe(
+      map(locationData => {
+        // Update the area with real temperature data
+        area.dayTemperature = locationData.dayTemp;
+        area.nightTemperature = locationData.nightTemp;
+        
+        return {
+          ...locationData,
+          area: area
+        };
+      })
+    );
+  }
+
+  /**
+   * Get ALL unique locations from database results (for small databases)
+   */
+  private getAllUniqueLocations(data: any[]): {latitude: number, longitude: number}[] {
+    const locationMap = new Map<string, {latitude: number, longitude: number}>();
+    
+    console.log('🔍 Processing database records for unique locations...');
+    
+    for (const record of data) {
+      if (record.latitude && record.longitude) {
+        // Use exact coordinates as key to preserve all unique locations
+        const lat = parseFloat(record.latitude);
+        const lon = parseFloat(record.longitude);
+        const key = `${lat},${lon}`;
+        
+        if (!locationMap.has(key)) {
+          locationMap.set(key, { latitude: lat, longitude: lon });
+          console.log(`➕ Added unique location: ${lat}, ${lon}`);
+        }
+      }
+    }
+    
+    console.log(`📊 Total unique locations found: ${locationMap.size}`);
+    return Array.from(locationMap.values());
+  }
+
+  /**
+   * Get unique locations from database results (legacy method with limit)
+   */
+  private getUniqueLocations(data: any[], limit: number): {latitude: number, longitude: number}[] {
+    const locationMap = new Map<string, {latitude: number, longitude: number}>();
+    
+    for (const record of data) {
+      if (record.latitude && record.longitude) {
+        const key = `${record.latitude.toFixed(2)},${record.longitude.toFixed(2)}`;
+        if (!locationMap.has(key)) {
+          locationMap.set(key, {
+            latitude: parseFloat(record.latitude),
+            longitude: parseFloat(record.longitude)
+          });
+          
+          if (locationMap.size >= limit) break;
+        }
+      }
+    }
+    
+    return Array.from(locationMap.values());
+  }
+
+  /**
+   * Get fallback areas when database is unavailable
+   */
+  private getFallbackAreas(): EarthAreaWithClimate[] {
+    const fallbackLocations = [
+      { name: 'New York', lat: 40.7128, lon: -74.0060, climate: 'Temperate' },
+      { name: 'London', lat: 51.5074, lon: -0.1278, climate: 'Temperate' },
+      { name: 'Tokyo', lat: 35.6762, lon: 139.6503, climate: 'Subtropical' },
+      { name: 'Sydney', lat: -33.8688, lon: 151.2093, climate: 'Subtropical' },
+      { name: 'Paris', lat: 48.8566, lon: 2.3522, climate: 'Temperate' },
+      { name: 'Los Angeles', lat: 34.0522, lon: -118.2437, climate: 'Subtropical' },
+      { name: 'Mumbai', lat: 19.0760, lon: 72.8777, climate: 'Tropical' },
+      { name: 'São Paulo', lat: -23.5505, lon: -46.6333, climate: 'Subtropical' },
+      { name: 'Cairo', lat: 30.0444, lon: 31.2357, climate: 'Subtropical' },
+      { name: 'Moscow', lat: 55.7558, lon: 37.6173, climate: 'Continental' },
+      { name: 'Beijing', lat: 39.9042, lon: 116.4074, climate: 'Continental' },
+      { name: 'Cape Town', lat: -33.9249, lon: 18.4241, climate: 'Temperate' },
+      { name: 'Bangkok', lat: 13.7563, lon: 100.5018, climate: 'Tropical' },
+      { name: 'Berlin', lat: 52.5200, lon: 13.4050, climate: 'Temperate' },
+      { name: 'Buenos Aires', lat: -34.6118, lon: -58.3960, climate: 'Subtropical' }
+    ];
+    
+    return fallbackLocations.map((location, index) => ({
+      id: index + 1,
+      name: location.name,
+      latitude: location.lat,
+      longitude: location.lon,
+      dayTemperature: 0,
+      nightTemperature: 0,
+      soilType: this.getSoilType(location.lat, location.lon),
+      description: this.getAreaDescription(location.name, 20, location.climate),
+      climateZone: location.climate
+    }));
+  }
+
+  /**
    * Get a random location with climate data from the database
    */
   getRandomLocationData(): Observable<LocationData | null> {

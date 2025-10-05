@@ -34,7 +34,18 @@
 
     <!-- Area Selection Screen -->
     <div *ngIf="currentScreen === 'area-selection'" class="area-selection-screen">
-      <app-area-selection (areaSelected)="onAreaSelected($event)"></app-area-selection>
+      <div class="area-selection-header">
+        <h2>🌍 Choose Your Earth Location</h2>
+        <p>Select an area from our NASA climate database to explore</p>
+        <div *ngIf="isLoadingData" class="loading-indicator">
+          <div class="spinner-small"></div>
+          <span>Loading areas...</span>
+        </div>
+      </div>
+      <app-area-selection 
+        [availableAreas]="availableAreas" 
+        (areaSelected)="onAreaSelected($event)">
+      </app-area-selection>
     </div>
 
 
