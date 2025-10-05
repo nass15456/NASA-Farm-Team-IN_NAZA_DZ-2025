@@ -1,0 +1,297 @@
+.logos-footer {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  text-align: center;
+}
+
+.logo-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 3rem;
+  margin-bottom: 1rem;
+}
+
+.nasa-logo,
+.gdg-logo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  width: 80px;
+  height: 100px;
+}
+
+.logo-img {
+  width: 60px;
+  height: 60px;
+  object-fit: contain;
+  filter: brightness(0.9);
+  transition: all 0.3s ease;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 5px;
+  /* Ensure PNG files display with same dimensions */
+  image-rendering: crisp-edges;
+  -webkit-image-rendering: crisp-edges;
+  -moz-image-rendering: crisp-edges;
+}
+
+.logo-img:hover {
+  filter: brightness(1.1);
+  transform: scale(1.05);
+}
+
+.logo-text {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  text-align: center;
+  width: 100%;
+  /* Ensure text is on same baseline */
+  line-height: 1.2;
+  min-height: 1.2em;
+}
+
+.partnership-text {
+  color: rgba(255, 255, 255, 0.7);
+  font-style: italic;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.partnership-text small {
+  font-size: 0.8rem;
+  display: block;
+  margin-top: 0.5rem;
+}
+
+/* Responsive design for logos */
+@media (max-width: 768px) {
+  .logo-container {
+    gap: 2rem;
+  }
+  
+  .nasa-logo,
+  .gdg-logo {
+    width: 70px;
+    height: 90px;
+  }
+  
+  .logo-img {
+    width: 50px;
+    height: 50px;
+  }
+  
+  .logo-text {
+    font-size: 0.8rem;
+  }
+  
+  .partnership-text {
+    font-size: 0.8rem;
+  }
+  
+  .partnership-text small {
+    font-size: 0.7rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .logo-container {
+    gap: 1.5rem;
+  }
+  
+  .nasa-logo,
+  .gdg-logo {
+    width: 60px;
+    height: 80px;
+  }
+  
+  .logo-img {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .logo-text {
+    font-size: 0.7rem;
+  }
+}
+
+.vegetation-index {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.3rem 0;
+  padding: 0.4rem 0.6rem;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+  border-left: 3px solid #4CAF50;
+}
+
+.vegetation-index .icon {
+  font-size: 1rem;
+}
+
+.vegetation-index .label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #90EE90;
+}
+
+.vegetation-index .value {
+  font-size: 0.85rem;
+  font-weight: 700;
+  font-family: 'Courier New', monospace;
+}
+
+.evi-excellent {
+  color: #00FF00;
+  text-shadow: 0 0 4px rgba(0, 255, 0, 0.5);
+}
+
+.evi-good {
+  color: #7FFF00;
+  text-shadow: 0 0 4px rgba(127, 255, 0, 0.3);
+}
+
+.evi-moderate {
+  color: #FFFF00;
+  text-shadow: 0 0 4px rgba(255, 255, 0, 0.3);
+}
+
+.evi-poor {
+  color: #FFA500;
+  text-shadow: 0 0 4px rgba(255, 165, 0, 0.3);
+}
+
+.evi-water {
+  color: #00BFFF;
+  text-shadow: 0 0 4px rgba(0, 191, 255, 0.3);
+}
+
+.evi-na {
+  color: #888;
+}
+
+.evi-status {
+  font-size: 0.7rem;
+  font-weight: 500;
+  padding: 0.2rem 0.4rem;
+  border-radius: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.status-excellent {
+  background: rgba(0, 255, 0, 0.2);
+  color: #00FF00;
+}
+
+.status-good {
+  background: rgba(127, 255, 0, 0.2);
+  color: #7FFF00;
+}
+
+.status-moderate {
+  background: rgba(255, 255, 0, 0.2);
+  color: #FFFF00;
+}
+
+.status-poor {
+  background: rgba(255, 165, 0, 0.2);
+  color: #FFA500;
+}
+
+.status-water {
+  background: rgba(0, 191, 255, 0.2);
+  color: #00BFFF;
+}
+
+.status-na {
+  background: rgba(136, 136, 136, 0.2);
+  color: #888;
+}
+
+.soil-type {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.3rem 0;
+}
+
+.soil-type .icon {
+  font-size: 1rem;
+}
+
+.soil-type .value {
+  font-size: 0.85rem;
+  color: #D2B48C;
+  font-weight: 500;
+}
+
+.vegetation-health {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.3rem 0;
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  border-left: 3px solid;
+  background: rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+}
+
+.vegetation-health .icon {
+  font-size: 1rem;
+}
+
+.vegetation-ok {
+  color: #4CAF50;
+  font-weight: 600;
+  text-shadow: 0 0 3px rgba(76, 175, 80, 0.3);
+}
+
+.vegetation-not-ok {
+  color: #FF5722;
+  font-weight: 600;
+  text-shadow: 0 0 3px rgba(255, 87, 34, 0.3);
+}
+
+/* Green box styling for OK status */
+.vegetation-health:has(.vegetation-ok) {
+  background: rgba(76, 175, 80, 0.15);
+  border-left-color: #4CAF50;
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.2);
+}
+
+/* Red box styling for Not OK status */
+.vegetation-health:has(.vegetation-not-ok) {
+  background: rgba(255, 87, 34, 0.15);
+  border-left-color: #FF5722;
+  box-shadow: 0 2px 8px rgba(255, 87, 34, 0.2);
+}
+
+/* Fallback for browsers that don't support :has() */
+.vegetation-health.ok-status {
+  background: rgba(76, 175, 80, 0.15);
+  border-left-color: #4CAF50;
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.2);
+}
+
+.vegetation-health.not-ok-status {
+  background: rgba(255, 87, 34, 0.15);
+  border-left-color: #FF5722;
+  box-shadow: 0 2px 8px rgba(255, 87, 34, 0.2);
+}
+
+.ndvi-value {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-family: 'Courier New', monospace;
+  font-weight: 500;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 0.1rem 0.3rem;
+  border-radius: 3px;
+}

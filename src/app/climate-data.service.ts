@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable, map, catchError, of, switchMap, timeout, retry, from, concatMap, delay, toArray } from 'rxjs';
+import { Observable, map, catchError, of, switchMap, timeout, retry, from, concatMap, delay, toArray, forkJoin } from 'rxjs';
 
 export interface ClimateData {
   lst_id: number;
@@ -57,6 +57,8 @@ export interface EarthAreaWithClimate {
   soilType: string;
   description: string;
   climateZone: string;
+  vegetationHealth?: string;
+  ndviValue?: number;
 }
 
 export interface ReverseGeocodeResult {
@@ -77,43 +79,157 @@ export class ClimateDataService {
   constructor(private http: HttpClient) {}
 
   /**
-   * Get unique cities from statistics table with coordinates
+   * Get unique cities from statistics table with coordinates and NDVI vegetation data
    */
-  getUniqueCitiesFromStats(): Observable<{latitude: number, longitude: number, city_name: string, data_count: number}[]> {
-    return this.http.get<any[]>(`${this.POSTGREST_URL}/lst_statistics?select=latitude,longitude`)
-      .pipe(
-        map(data => {
-          // Get unique lat/lon pairs and count occurrences
-          const locationMap = new Map<string, {latitude: number, longitude: number, count: number}>();
-          
-          data.forEach(record => {
-            if (record.latitude && record.longitude) {
-              const key = `${record.latitude},${record.longitude}`;
-              if (locationMap.has(key)) {
-                locationMap.get(key)!.count++;
-              } else {
-                locationMap.set(key, {
-                  latitude: record.latitude,
-                  longitude: record.longitude,
-                  count: 1
-                });
-              }
+  getUniqueCitiesFromStats(): Observable<{latitude: number, longitude: number, city_name: string, data_count: number, vegetation_health: string, ndvi_value: number}[]> {
+    console.log("🎯 getUniqueCitiesFromStats() method called - ENTRY POINT");
+    console.log("🔍 PostgREST URL being used:", this.POSTGREST_URL);
+    
+    // Get LST data for coordinates
+    const lstData$ = this.http.get<any[]>(`${this.POSTGREST_URL}/lst_statistics?select=latitude,longitude`);
+    console.log('🌍 LST Location Data:', `${this.POSTGREST_URL}/lst_statistics?select=latitude,longitude`);
+    
+    // Get VGT NDVI data for vegetation health - try different band names
+    const ndviData$ = this.http.get<any[]>(`${this.POSTGREST_URL}/vgt_statistics?select=latitude,longitude,value_mean,band&band=eq.250m_16_days_NDVI`).pipe(
+      catchError(() => {
+        console.log('⚠️ No NDVI band found, trying alternative bands...');
+        return this.http.get<any[]>(`${this.POSTGREST_URL}/vgt_statistics?select=latitude,longitude,value_mean,band&band=eq.MYD13Q1_NDVI`);
+      }),
+      catchError(() => {
+        console.log('⚠️ No specific NDVI bands found, getting all bands to check...');
+        return this.http.get<any[]>(`${this.POSTGREST_URL}/vgt_statistics?select=latitude,longitude,value_mean,band&limit=100`);
+      }),
+      catchError(() => {
+        console.log('❌ No NDVI data available at all');
+        return of([]);
+      })
+    );
+    
+    return forkJoin([lstData$, ndviData$]).pipe(
+      switchMap(([lstRecords, ndviRecords]) => {
+        // Create map of coordinates to NDVI values (calculate mean per location)
+        const ndviLocationValues = new Map<string, number[]>();
+        console.log('🌿 NDVI Records received:', ndviRecords.length, ndviRecords.slice(0, 3));
+
+        // Collect all NDVI values per location
+        ndviRecords.forEach((record: any) => {
+          if (record.latitude && record.longitude && record.value_mean !== null) {
+            const key = `${record.latitude},${record.longitude}`;
+            if (!ndviLocationValues.has(key)) {
+              ndviLocationValues.set(key, []);
             }
-          });
+            ndviLocationValues.get(key)!.push(record.value_mean);
+          }
+        });
+        
+        // Calculate mean NDVI for each location
+        const ndviMap = new Map<string, number>();
+        ndviLocationValues.forEach((values, key) => {
+          const mean = values.reduce((sum, val) => sum + val, 0) / values.length;
+          ndviMap.set(key, mean);
+        });
+        
+        console.log('🗺️ NDVI Map created with', ndviMap.size, 'locations');
+        
+        // Get unique lat/lon pairs and count occurrences from LST data
+        const locationMap = new Map<string, {latitude: number, longitude: number, count: number}>();
+        
+        lstRecords.forEach(record => {
+          if (record.latitude && record.longitude) {
+            const key = `${record.latitude},${record.longitude}`;
+            if (locationMap.has(key)) {
+              locationMap.get(key)!.count++;
+            } else {
+              locationMap.set(key, {
+                latitude: record.latitude,
+                longitude: record.longitude,
+                count: 1
+              });
+            }
+          }
+        });
+        
+        const locations = Array.from(locationMap.values());
+        console.log(`🌍 Found ${locations.length} unique locations, starting reverse geocoding...`);
+        
+        // Now use reverse geocoding to get real city names instead of generic ones
+        return this.reverseGeocodeMultipleLocations(locations, ndviMap);
+      }),
+      catchError(error => {
+        console.error('Error fetching unique cities with NDVI data:', error);
+        return of([]);
+      })
+    );
+  }
+
+  /**
+   * Reverse geocode multiple locations efficiently with rate limiting
+   */
+  private reverseGeocodeMultipleLocations(
+    locations: {latitude: number, longitude: number, count: number}[], 
+    ndviMap: Map<string, number>
+  ): Observable<{latitude: number, longitude: number, city_name: string, data_count: number, vegetation_health: string, ndvi_value: number}[]> {
+    
+    console.log(`🔍 Starting reverse geocoding for ${locations.length} locations...`);
+    
+    // Limit to reasonable number for performance (increase if needed)
+    const limitedLocations = locations.slice(0, 15);
+    
+    // Create geocoding observables with delay between requests
+    const geocodeObservables = limitedLocations.map((location, index) => {
+      return of(null).pipe(
+        delay(index * 300), // 300ms delay between requests to respect API limits
+        switchMap(() => {
+          console.log(`🌍 Reverse geocoding location ${index + 1}/${limitedLocations.length}: ${location.latitude}, ${location.longitude}`);
+          return this.reverseGeocode(location.latitude, location.longitude);
+        }),
+        map(geocodeResult => {
+          const key = `${location.latitude},${location.longitude}`;
+          const ndviValue = ndviMap.get(key) || 0;
           
-          // Convert to array and create city names
-          return Array.from(locationMap.values()).map(location => ({
+          // Determine vegetation health based on NDVI value
+          let vegetationHealth: string;
+          if (ndviValue >= -1 && ndviValue < 0.2) {
+            vegetationHealth = 'Not OK';
+          } else if (ndviValue >= 0.2 && ndviValue <= 1) {
+            vegetationHealth = 'OK';
+          } else {
+            vegetationHealth = 'Unknown';
+          }
+          
+          console.log(`✅ Geocoded: ${geocodeResult.fullName} (${geocodeResult.source}) for ${location.latitude}, ${location.longitude}`);
+          
+          return {
             latitude: location.latitude,
             longitude: location.longitude,
-            city_name: `City_${location.latitude.toFixed(2)}_${location.longitude.toFixed(2)}`,
-            data_count: location.count
-          }));
+            city_name: geocodeResult.fullName, // Use real city name from geocoding!
+            data_count: location.count,
+            vegetation_health: vegetationHealth,
+            ndvi_value: Number(ndviValue.toFixed(3))
+          };
         }),
         catchError(error => {
-          console.error('Error fetching unique cities from stats:', error);
-          return of([]);
+          console.warn(`⚠️ Geocoding failed for ${location.latitude},${location.longitude}:`, error);
+          const key = `${location.latitude},${location.longitude}`;
+          const ndviValue = ndviMap.get(key) || 0;
+          
+          // Use better fallback city name instead of coordinate-based name
+          const fallbackName = this.getLocationName(location.latitude, location.longitude);
+          
+          return of({
+            latitude: location.latitude,
+            longitude: location.longitude,
+            city_name: fallbackName, // Better fallback than generic coordinates
+            data_count: location.count,
+            vegetation_health: ndviValue >= 0.2 ? 'OK' : 'Not OK',
+            ndvi_value: Number(ndviValue.toFixed(3))
+          });
         })
       );
+    });
+    
+    // Execute all geocoding requests and collect results
+    return forkJoin(geocodeObservables);
   }
 
   /**
@@ -341,41 +457,41 @@ export class ClimateDataService {
   }
 
   /**
-   * Get available areas from database for user selection with reverse geocoding
+   * Get available areas from database for user selection with NDVI data
    */
   getAvailableAreas(limit: number = 50): Observable<EarthAreaWithClimate[]> {
     console.log('📋 Fetching available areas from NASA database...');
     
-    // For small databases, get all available data without artificial limits
-    return this.http.get<any[]>(`${this.POSTGREST_URL}/lst_statistics?select=latitude,longitude,band`)
-      .pipe(
-        switchMap(data => {
-          if (!data || data.length === 0) {
-            console.warn('⚠️ No areas found in database, using fallback areas');
-            return of(this.getFallbackAreas());
-          }
-
-          console.log(`📊 Raw database records: ${data.length}`);
-          
-          // Get all unique coordinates without aggressive filtering
-          const uniqueLocations = this.getAllUniqueLocations(data);
-          
-          console.log(`🌍 Found ${uniqueLocations.length} unique locations from ${data.length} records`);
-          console.log('📍 Locations:', uniqueLocations.map((loc: {latitude: number, longitude: number}) => `${loc.latitude},${loc.longitude}`));
-          
-          if (uniqueLocations.length === 0) {
-            console.warn('⚠️ No unique locations found, using fallback');
-            return of(this.getFallbackAreas());
-          }
-          
-          // Process each location with reverse geocoding
-          return this.processLocationsWithReverseGeocoding(uniqueLocations);
-        }),
-        catchError(error => {
-          console.error('❌ Error fetching areas:', error);
+    // Use the method that includes NDVI data
+    return this.getUniqueCitiesWithRealNames().pipe(
+      switchMap(cities => {
+        if (!cities || cities.length === 0) {
+          console.warn('⚠️ No cities found from database, using fallback areas');
           return of(this.getFallbackAreas());
-        })
-      );
+        }
+
+        // Convert cities to EarthAreaWithClimate format with NDVI values
+        const areas: EarthAreaWithClimate[] = cities.map((city, index) => ({
+          id: index + 1,
+          name: city.city_name,
+          latitude: city.latitude,
+          longitude: city.longitude,
+          dayTemperature: 0,
+          nightTemperature: 0,
+          soilType: this.getSoilType(city.latitude, city.longitude),
+          description: this.getAreaDescription(city.city_name, 20, this.getClimateZone(city.latitude, city.longitude)),
+          climateZone: this.getClimateZone(city.latitude, city.longitude),
+          vegetationHealth: city.vegetation_health,
+          ndviValue: city.ndvi_value
+        }));
+
+        return of(areas.slice(0, limit));
+      }),
+      catchError(error => {
+        console.error('❌ Error fetching areas:', error);
+        return of(this.getFallbackAreas());
+      })
+    );
   }
 
   /**
