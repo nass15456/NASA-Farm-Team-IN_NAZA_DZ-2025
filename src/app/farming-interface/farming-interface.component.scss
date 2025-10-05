@@ -151,6 +151,44 @@
   }
 }
 
+.guessing-prompt {
+  text-align: center;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  background: rgba(255, 193, 7, 0.2);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 193, 7, 0.3);
+  
+  p {
+    color: #ffc107;
+    margin: 0 0 1rem 0;
+    font-size: 1rem;
+    font-weight: 500;
+  }
+  
+  .reveal-btn {
+    background: linear-gradient(45deg, #ff9800 0%, #f57c00 100%);
+    color: white;
+    border: none;
+    padding: 0.8rem 1.5rem;
+    border-radius: 25px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 15px rgba(255, 152, 0, 0.4);
+      background: linear-gradient(45deg, #fb8c00 0%, #ef6c00 100%);
+    }
+    
+    &:active {
+      transform: translateY(0);
+    }
+  }
+}
+
 .crop-list {
   display: flex;
   flex-direction: column;

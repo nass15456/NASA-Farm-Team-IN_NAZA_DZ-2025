@@ -34,17 +34,24 @@
     <!-- Crop Selection Panel -->
     <div class="crop-panel">
       <h3>Available Crops</h3>
-      <div class="crop-legend">
+      <div class="crop-legend" *ngIf="showSuitabilityAnswers">
         <span class="legend-item suitable">✅ Suitable for this area</span>
         <span class="legend-item unsuitable">❌ Not suitable</span>
+      </div>
+      
+      <div class="guessing-prompt" *ngIf="!showSuitabilityAnswers">
+        <p>🤔 Can you guess which crops are suitable for this climate?</p>
+        <button class="reveal-btn" (click)="revealSuitabilityAnswers()">
+          🎯 Show Answers
+        </button>
       </div>
       
       <div class="crop-list">
         <div 
           *ngFor="let crop of availableCrops"
           class="crop-item"
-          [class.suitable]="isCropSuitable(crop)"
-          [class.unsuitable]="!isCropSuitable(crop)"
+          [class.suitable]="showSuitabilityAnswers && isCropSuitable(crop)"
+          [class.unsuitable]="showSuitabilityAnswers && !isCropSuitable(crop)"
           draggable="true"
           (dragstart)="onDragStart($event, crop)">
           
