@@ -1,3 +1,60 @@
+// Navigation Styles
+.main-navigation {
+  background: rgba(0, 26, 51, 0.95);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(79, 195, 247, 0.2);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  
+  .nav-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  
+  .nav-logo {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #4fc3f7;
+    text-shadow: 0 0 10px rgba(79, 195, 247, 0.3);
+  }
+  
+  .nav-links {
+    display: flex;
+    gap: 2rem;
+    
+    a {
+      color: rgba(255, 255, 255, 0.8);
+      text-decoration: none;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      transition: all 0.3s ease;
+      font-weight: 500;
+      
+      &:hover {
+        color: #4fc3f7;
+        background: rgba(79, 195, 247, 0.1);
+        transform: translateY(-1px);
+      }
+      
+      &.active {
+        color: #4fc3f7;
+        background: rgba(79, 195, 247, 0.2);
+        box-shadow: 0 0 10px rgba(79, 195, 247, 0.3);
+      }
+    }
+  }
+}
+
+.router-content {
+  min-height: calc(100vh - 80px);
+  padding: 2rem 0;
+}
+
 .game-container {
   min-height: 100vh;
   background: linear-gradient(135deg, #001a33 0%, #003d66 50%, #005588 100%);

@@ -27,12 +27,20 @@
       
       <div class="area-info">
         <div class="climate-zone">
-          <span class="icon">�</span>
+          <span class="icon">🌡</span>
           <span class="value">{{ area.climateZone }}</span>
         </div>
         <div class="soil-type">
-          <span class="icon">�️</span>
+          <span class="icon">🏔️</span>
           <span class="value">{{ area.soilType }} Soil</span>
+        </div>
+        <div class="vegetation-health" [ngClass]="'health-' + (getNDVIStatus(area.id)?.color || 'gray')">
+          <span class="icon">{{ getVegetationHealthIcon(getNDVIStatus(area.id)) }}</span>
+          <span class="value" *ngIf="!isLoadingNDVI(area.id)">{{ getVegetationHealthText(getNDVIStatus(area.id)) }}</span>
+          <span class="loading-text" *ngIf="isLoadingNDVI(area.id)">
+            <span class="mini-spinner"></span>
+            Loading vegetation data...
+          </span>
         </div>
       </div>
       

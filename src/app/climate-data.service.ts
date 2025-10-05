@@ -19,6 +19,30 @@ export interface ClimateData {
   pixels_pass: number;
 }
 
+export interface VegetationData {
+  vgt_id: number;
+  lat: number;
+  lon: number;
+  vgt_band: string;
+  vgt_units: string;
+  modis_date: string;
+  calendar_date: string;
+  value_center: string;
+  value_min: number;
+  value_max: number;
+  value_mean: number;
+  value_stddev: number;
+  pixels_total: number;
+  pixels_pass: number;
+}
+
+export interface NDVIStatus {
+  value: number;
+  status: 'KO' | 'OK' | 'unknown';
+  color: 'red' | 'green' | 'gray';
+  description: string;
+}
+
 export interface LocationData {
   latitude: number;
   longitude: number;

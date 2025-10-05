@@ -159,7 +159,8 @@
   
   .area-info {
     display: flex;
-    gap: 1rem;
+    flex-wrap: wrap;
+    gap: 0.8rem;
     margin-bottom: 1rem;
     
     .climate-zone, .soil-type {
@@ -178,6 +179,70 @@
       .value {
         color: #e0e0e0;
         font-weight: 500;
+      }
+    }
+
+    // Vegetation Health Styles
+    .vegetation-health {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 0.3rem 0.6rem;
+      border-radius: 15px;
+      font-size: 0.9rem;
+      transition: all 0.3s ease;
+      
+      .icon {
+        font-size: 1rem;
+      }
+      
+      .value {
+        font-weight: 500;
+      }
+      
+      .loading-text {
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
+        font-size: 0.8rem;
+        color: #cfd8dc;
+        
+        .mini-spinner {
+          width: 12px;
+          height: 12px;
+          border: 2px solid rgba(255, 255, 255, 0.3);
+          border-top: 2px solid #4fc3f7;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+        }
+      }
+      
+      // Health status colors
+      &.health-red {
+        background: rgba(229, 62, 62, 0.2);
+        border: 1px solid rgba(229, 62, 62, 0.3);
+        
+        .value {
+          color: #ff6b6b;
+        }
+      }
+      
+      &.health-green {
+        background: rgba(56, 161, 105, 0.2);
+        border: 1px solid rgba(56, 161, 105, 0.3);
+        
+        .value {
+          color: #68d391;
+        }
+      }
+      
+      &.health-gray {
+        background: rgba(113, 128, 150, 0.2);
+        border: 1px solid rgba(113, 128, 150, 0.3);
+        
+        .value {
+          color: #a0aec0;
+        }
       }
     }
   }

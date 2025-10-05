@@ -13,6 +13,21 @@
     </div>
   </div>
 
+  <!-- Navigation Menu -->
+  <nav *ngIf="!isLoading" class="main-navigation">
+    <div class="nav-container">
+      <div class="nav-logo">🌍 Earth Simulator</div>
+      <div class="nav-links">
+        <a routerLink="/planet" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">
+          🌍 Earth Explorer
+        </a>
+        <a routerLink="/ndvi-demo" routerLinkActive="active">
+          🌱 NDVI Vegetation Health
+        </a>
+      </div>
+    </div>
+  </nav>
+
   <!-- Main Game Screens -->
   <div *ngIf="!isLoading" class="game-screen">
     <!-- Earth Planet Selection Screen -->
@@ -70,6 +85,10 @@
       </app-quiz>
     </div>
 
+    <!-- Router Content for new pages -->
+    <div class="router-content">
+      <router-outlet></router-outlet>
+    </div>
 
   </div>
 
