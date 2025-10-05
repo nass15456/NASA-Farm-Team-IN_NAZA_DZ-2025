@@ -17,6 +17,7 @@ export class FarmingInterfaceComponent implements OnInit {
   farmPlots: (Crop | null)[] = Array(12).fill(null);
   suitableCrops: Crop[] = [];
   draggedCrop: Crop | null = null;
+  showSuitabilityAnswers = false;
   
   constructor(private gameDataService: GameDataService) {}
 
@@ -64,6 +65,13 @@ export class FarmingInterfaceComponent implements OnInit {
 
   onBackToPlanet() {
     this.backToPlanet.emit();
+  }
+
+  /**
+   * Reveal the suitability answers
+   */
+  revealSuitabilityAnswers() {
+    this.showSuitabilityAnswers = true;
   }
 
   /**
