@@ -1,5 +1,5 @@
-import { Component, Output, EventEmitter, OnInit } from '@angular/core';
-import { GameDataService, EarthArea } from '../game-data.service';
+import { Component, Input, Output, EventEmitter, OnInit } from '@angular/core';
+import { EarthAreaWithClimate } from '../climate-data.service';
 
 @Component({
   selector: 'app-area-selection',
@@ -7,17 +7,18 @@ import { GameDataService, EarthArea } from '../game-data.service';
   styleUrls: ['./area-selection.component.scss']
 })
 export class AreaSelectionComponent implements OnInit {
-  @Output() areaSelected = new EventEmitter<EarthArea>();
+  @Input() availableAreas: EarthAreaWithClimate[] = [];
+  @Output() areaSelected = new EventEmitter<EarthAreaWithClimate>();
   
-  earthAreas: EarthArea[] = [];
-
-  constructor(private gameDataService: GameDataService) {}
+  constructor() {}
 
   ngOnInit() {
-    this.earthAreas = this.gameDataService.getEarthAreas();
+    // Areas are now passed from parent component via Input
+    console.log(`🌍 Area selection loaded with ${this.availableAreas.length} areas`);
   }
 
-  selectArea(area: EarthArea) {
+  selectArea(area: EarthAreaWithClimate) {
+    console.log(`🎯 User selected: ${area.name}`);
     this.areaSelected.emit(area);
   }
 }
