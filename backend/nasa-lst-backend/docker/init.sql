@@ -274,8 +274,170 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+
+
+
+
+-- Create VGT NDVI/EVI Data table (same structure as LST)
+CREATE TABLE IF NOT EXISTS vgt_ndvi_evi_data (
+    id SERIAL PRIMARY KEY,
+    xllcorner DECIMAL(12,2),
+    yllcorner DECIMAL(12,2),
+    cellsize DECIMAL(15,10),
+    nrows INTEGER,
+    ncols INTEGER,
+    band VARCHAR(50),
+    units VARCHAR(20),
+    scale DECIMAL(10,8),
+    latitude DECIMAL(10,6),
+    longitude DECIMAL(10,6),
+    header TEXT,
+    subset JSONB,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_vgt_location ON vgt_ndvi_evi_data (latitude, longitude);
+CREATE INDEX IF NOT EXISTS idx_vgt_subset ON vgt_ndvi_evi_data USING GIN (subset);
+
+
+
+CREATE TABLE IF NOT EXISTS vgt_statistics (
+    id SERIAL PRIMARY KEY,
+    latitude DECIMAL(10,6),
+    longitude DECIMAL(10,6),
+    modis_date VARCHAR(20) NOT NULL,
+    calendar_date DATE NOT NULL,
+    band VARCHAR(50) NOT NULL,
+    value_center VARCHAR(50),
+    value_min DECIMAL(10,4),
+    value_max DECIMAL(10,4),
+    value_sum DECIMAL(15,4),
+    value_range DECIMAL(10,4),
+    value_mean DECIMAL(10,4),
+    value_variance DECIMAL(10,4),
+    value_stddev DECIMAL(10,4),
+    pixels_total INTEGER,
+    pixels_pass INTEGER,
+    pixels_pass_rel DECIMAL(5,2),
+    proc_date VARCHAR(20),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+
+CREATE INDEX IF NOT EXISTS idx_vgt_statistics_location ON vgt_statistics (latitude, longitude);
+CREATE INDEX IF NOT EXISTS idx_vgt_statistics_modis_date_band ON vgt_statistics (modis_date, band);
+CREATE INDEX IF NOT EXISTS idx_vgt_statistics_calendar_date ON vgt_statistics (calendar_date);
+CREATE INDEX IF NOT EXISTS idx_vgt_statistics_band ON vgt_statistics (band);
+
+CREATE OR REPLACE FUNCTION insert_vgt_statistics(
+    data_json JSONB
+)
+RETURNS TABLE (
+    inserted_count INTEGER
+) AS $$
+DECLARE
+    stat_record RECORD;
+    count_inserted INTEGER := 0;
+    input_latitude DECIMAL(10,6);
+    input_longitude DECIMAL(10,6);
+BEGIN
+    -- Extract latitude and longitude from input JSON
+    input_latitude := (data_json->>'latitude')::DECIMAL(10,6);
+    input_longitude := (data_json->>'longitude')::DECIMAL(10,6);
+    
+    FOR stat_record IN 
+        SELECT 
+            input_latitude as latitude,
+            input_longitude as longitude,
+            (item->>'modis_date')::VARCHAR(20) as modis_date,
+            (item->>'calendar_date')::DATE as calendar_date,
+            (item->>'band')::VARCHAR(50) as band,
+            (item->>'value_center')::VARCHAR(50) as value_center,
+            (item->>'value_min')::DECIMAL(10,4) as value_min,
+            (item->>'value_max')::DECIMAL(10,4) as value_max,
+            (item->>'value_sum')::DECIMAL(15,4) as value_sum,
+            (item->>'value_range')::DECIMAL(10,4) as value_range,
+            (item->>'value_mean')::DECIMAL(10,4) as value_mean,
+            (item->>'value_variance')::DECIMAL(10,4) as value_variance,
+            (item->>'value_stddev')::DECIMAL(10,4) as value_stddev,
+            (item->>'pixels_total')::INTEGER as pixels_total,
+            (item->>'pixels_pass')::INTEGER as pixels_pass,
+            (item->>'pixels_pass_rel')::DECIMAL(5,2) as pixels_pass_rel,
+            (item->>'proc_date')::VARCHAR(20) as proc_date
+        FROM jsonb_array_elements(data_json->'statistics') AS item
+    LOOP
+        INSERT INTO vgt_statistics (
+            latitude, longitude, modis_date, calendar_date, band, value_center, value_min, value_max,
+            value_sum, value_range, value_mean, value_variance, value_stddev,
+            pixels_total, pixels_pass, pixels_pass_rel, proc_date
+        ) VALUES (
+            stat_record.latitude, stat_record.longitude, stat_record.modis_date, stat_record.calendar_date, stat_record.band,
+            stat_record.value_center, stat_record.value_min, stat_record.value_max,
+            stat_record.value_sum, stat_record.value_range, stat_record.value_mean,
+            stat_record.value_variance, stat_record.value_stddev, stat_record.pixels_total,
+            stat_record.pixels_pass, stat_record.pixels_pass_rel, stat_record.proc_date
+        );
+        count_inserted := count_inserted + 1;
+    END LOOP;
+    
+    RETURN QUERY SELECT count_inserted;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create function to refresh PostgREST schema cache
+CREATE OR REPLACE FUNCTION refresh_postgrest_cache()
+RETURNS TEXT AS $$
+BEGIN
+    -- Notify PostgREST to reload its schema cache
+    NOTIFY pgrst, 'reload schema';
+    RETURN 'PostgREST schema cache refresh requested';
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create function to get current schema information for PostgREST
+CREATE OR REPLACE FUNCTION get_schema_info()
+RETURNS TABLE (
+    table_schema TEXT,
+    table_name TEXT,
+    table_type TEXT,
+    is_insertable_into TEXT
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        t.table_schema::TEXT,
+        t.table_name::TEXT,
+        t.table_type::TEXT,
+        t.is_insertable_into::TEXT
+    FROM information_schema.tables t
+    WHERE t.table_schema = 'public'
+    AND t.table_type IN ('BASE TABLE', 'VIEW')
+    ORDER BY t.table_name;
+END;
+$$ LANGUAGE plpgsql;
+
+
+
 -- Grant permissions to PostgREST user
 GRANT USAGE ON SCHEMA public TO nasa_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO nasa_user;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO nasa_user;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO nasa_user;
+
+
+
+
+
+
+
+
+
+
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO nasa_user;
+
+-- Grant specific permissions for new VGT tables
+GRANT SELECT, INSERT, UPDATE, DELETE ON vgt_ndvi_evi_data TO nasa_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON vgt_statistics TO nasa_user;

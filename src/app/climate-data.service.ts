@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable, map, catchError, of, switchMap, timeout, retry } from 'rxjs';
+import { Observable, map, catchError, of, switchMap, timeout, retry, from, concatMap, delay, toArray } from 'rxjs';
 
 export interface ClimateData {
   lst_id: number;
@@ -75,6 +75,58 @@ export class ClimateDataService {
   private readonly POSTGREST_URL = 'http://localhost:3001';
 
   constructor(private http: HttpClient) {}
+
+  /**
+   * Get unique cities from statistics table with coordinates
+   */
+  getUniqueCitiesFromStats(): Observable<{latitude: number, longitude: number, city_name: string, data_count: number}[]> {
+    return this.http.get<any[]>(`${this.POSTGREST_URL}/lst_statistics?select=latitude,longitude`)
+      .pipe(
+        map(data => {
+          // Get unique lat/lon pairs and count occurrences
+          const locationMap = new Map<string, {latitude: number, longitude: number, count: number}>();
+          
+          data.forEach(record => {
+            if (record.latitude && record.longitude) {
+              const key = `${record.latitude},${record.longitude}`;
+              if (locationMap.has(key)) {
+                locationMap.get(key)!.count++;
+              } else {
+                locationMap.set(key, {
+                  latitude: record.latitude,
+                  longitude: record.longitude,
+                  count: 1
+                });
+              }
+            }
+          });
+          
+          // Convert to array and create city names
+          return Array.from(locationMap.values()).map(location => ({
+            latitude: location.latitude,
+            longitude: location.longitude,
+            city_name: `City_${location.latitude.toFixed(2)}_${location.longitude.toFixed(2)}`,
+            data_count: location.count
+          }));
+        }),
+        catchError(error => {
+          console.error('Error fetching unique cities from stats:', error);
+          return of([]);
+        })
+      );
+  }
+
+  /**
+   * Get unique cities with real names using reverse geocoding (simplified version)
+   */
+  getUniqueCitiesWithRealNames(): Observable<any[]> {
+    return this.getUniqueCitiesFromStats().pipe(
+      map(cities => {
+        console.log(`🏙️ Found ${cities.length} unique cities from statistics table:`, cities);
+        return cities;
+      })
+    );
+  }
 
   /**
    * Reverse geocode coordinates to get exact city name using multiple providers
