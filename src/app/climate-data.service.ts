@@ -100,7 +100,7 @@ export class ClimateDataService {
   }
 
   /**
-   * OpenStreetMap Nominatim reverse geocoding (primary)
+   * OpenStreetMap Nominatim reverse geocoding (primary) - English only
    */
   private tryNominatimGeocoding(lat: number, lon: number): Observable<ReverseGeocodeResult> {
     const url = `https://nominatim.openstreetmap.org/reverse`;
@@ -109,7 +109,10 @@ export class ClimateDataService {
       .set('lat', lat.toString())
       .set('lon', lon.toString())
       .set('addressdetails', '1')
-      .set('zoom', '10');
+      .set('zoom', '10')
+      .set('accept-language', 'en')  // Force English language
+      .set('extratags', '1')
+      .set('namedetails', '1');
 
     return this.http.get<any>(url, { params }).pipe(
       timeout(5000),
@@ -117,10 +120,22 @@ export class ClimateDataService {
       map(response => {
         if (response && response.address) {
           const addr = response.address;
-          const city = addr.city || addr.town || addr.village || addr.hamlet || 
-                      addr.suburb || addr.neighbourhood || addr.county;
-          const state = addr.state || addr.province || addr.region;
-          const country = addr.country;
+          
+          // Prefer English names from namedetails if available
+          let city = addr.city || addr.town || addr.village || addr.hamlet || 
+                    addr.suburb || addr.neighbourhood || addr.county;
+          let state = addr.state || addr.province || addr.region;
+          let country = addr.country;
+          
+          // Check for English names in namedetails
+          if (response.namedetails) {
+            city = response.namedetails['name:en'] || city;
+          }
+
+          // Manual translation for common non-English names
+          city = this.translateToEnglish(city);
+          state = this.translateToEnglish(state);
+          country = this.translateToEnglish(country);
 
           if (city && country) {
             const fullName = state ? `${city}, ${state}, ${country}` : `${city}, ${country}`;
@@ -139,14 +154,15 @@ export class ClimateDataService {
   }
 
   /**
-   * Photon reverse geocoding (secondary)
+   * Photon reverse geocoding (secondary) - English language
    */
   private tryPhotonGeocoding(lat: number, lon: number): Observable<ReverseGeocodeResult> {
     const url = `https://photon.komoot.io/reverse`;
     const params = new HttpParams()
       .set('lat', lat.toString())
       .set('lon', lon.toString())
-      .set('limit', '1');
+      .set('limit', '1')
+      .set('lang', 'en'); // Force English language
 
     return this.http.get<any>(url, { params }).pipe(
       timeout(5000),
@@ -154,9 +170,14 @@ export class ClimateDataService {
       map(response => {
         if (response && response.features && response.features.length > 0) {
           const props = response.features[0].properties;
-          const city = props.city || props.name || props.locality;
-          const state = props.state || props.region;
-          const country = props.country;
+          let city = props.city || props.name || props.locality;
+          let state = props.state || props.region;
+          let country = props.country;
+
+          // Translate to English
+          city = this.translateToEnglish(city);
+          state = this.translateToEnglish(state);
+          country = this.translateToEnglish(country);
 
           if (city && country) {
             const fullName = state ? `${city}, ${state}, ${country}` : `${city}, ${country}`;
@@ -175,23 +196,28 @@ export class ClimateDataService {
   }
 
   /**
-   * BigDataCloud reverse geocoding (tertiary)
+   * BigDataCloud reverse geocoding (tertiary) - English language
    */
   private tryBigDataCloudGeocoding(lat: number, lon: number): Observable<ReverseGeocodeResult> {
     const url = `https://api.bigdatacloud.net/data/reverse-geocode-client`;
     const params = new HttpParams()
       .set('latitude', lat.toString())
       .set('longitude', lon.toString())
-      .set('localityLanguage', 'en');
+      .set('localityLanguage', 'en'); // Already set to English
 
     return this.http.get<any>(url, { params }).pipe(
       timeout(5000),
       retry(1),
       map(response => {
         if (response) {
-          const city = response.city || response.locality || response.localityInfo?.administrative?.[3]?.name;
-          const state = response.principalSubdivision || response.localityInfo?.administrative?.[1]?.name;
-          const country = response.countryName;
+          let city = response.city || response.locality || response.localityInfo?.administrative?.[3]?.name;
+          let state = response.principalSubdivision || response.localityInfo?.administrative?.[1]?.name;
+          let country = response.countryName;
+
+          // Translate to English as additional safety
+          city = this.translateToEnglish(city);
+          state = this.translateToEnglish(state);
+          country = this.translateToEnglish(country);
 
           if (city && country) {
             const fullName = state ? `${city}, ${state}, ${country}` : `${city}, ${country}`;
@@ -955,6 +981,104 @@ export class ClimateDataService {
    */
   private kelvinToCelsius(kelvin: number): number {
     return Math.round(kelvin - 273.15);
+  }
+
+  /**
+   * Translate common French/local place names to English
+   */
+  private translateToEnglish(name: string | undefined): string {
+    if (!name) return '';
+    
+    // French to English translations for common place names
+    const translations: {[key: string]: string} = {
+      // French regions/countries
+      'France': 'France',
+      'Allemagne': 'Germany', 
+      'Espagne': 'Spain',
+      'Italie': 'Italy',
+      'Royaume-Uni': 'United Kingdom',
+      'États-Unis': 'United States',
+      'Pays-Bas': 'Netherlands',
+      'Suisse': 'Switzerland',
+      'Belgique': 'Belgium',
+      'Autriche': 'Austria',
+      'République tchèque': 'Czech Republic',
+      'Pologne': 'Poland',
+      'Hongrie': 'Hungary',
+      'Grèce': 'Greece',
+      'Portugal': 'Portugal',
+      'Norvège': 'Norway',
+      'Suède': 'Sweden',
+      'Danemark': 'Denmark',
+      'Finlande': 'Finland',
+      
+      // French cities
+      'Paris': 'Paris',
+      'Lyon': 'Lyon', 
+      'Marseille': 'Marseille',
+      'Toulouse': 'Toulouse',
+      'Nice': 'Nice',
+      'Nantes': 'Nantes',
+      'Strasbourg': 'Strasbourg',
+      'Montpellier': 'Montpellier',
+      'Bordeaux': 'Bordeaux',
+      'Lille': 'Lille',
+      
+      // French administrative divisions
+      'Île-de-France': 'Île-de-France',
+      'Provence-Alpes-Côte d\'Azur': 'Provence-Alpes-Côte d\'Azur',
+      'Auvergne-Rhône-Alpes': 'Auvergne-Rhône-Alpes',
+      'Nouvelle-Aquitaine': 'Nouvelle-Aquitaine',
+      'Occitanie': 'Occitanie',
+      'Hauts-de-France': 'Hauts-de-France',
+      'Grand Est': 'Grand Est',
+      'Pays de la Loire': 'Pays de la Loire',
+      'Bretagne': 'Brittany',
+      'Normandie': 'Normandy',
+      
+      // Other common translations
+      'Londres': 'London',
+      'Berlin': 'Berlin',
+      'Madrid': 'Madrid',
+      'Rome': 'Rome',
+      'Amsterdam': 'Amsterdam',
+      'Bruxelles': 'Brussels',
+      'Genève': 'Geneva',
+      'Zurich': 'Zurich',
+      'Munich': 'Munich',
+      'Vienne': 'Vienna',
+      'Prague': 'Prague',
+      'Budapest': 'Budapest',
+      'Varsovie': 'Warsaw',
+      'Stockholm': 'Stockholm',
+      'Copenhague': 'Copenhagen',
+      'Helsinki': 'Helsinki',
+      'Oslo': 'Oslo',
+      
+      // Generic terms
+      'Région': 'Region',
+      'Département': 'Department',
+      'Commune': 'Municipality',
+      'Ville': 'City',
+      'Arrondissement': 'District'
+    };
+    
+    // Check for exact match first
+    const exactMatch = translations[name];
+    if (exactMatch) {
+      return exactMatch;
+    }
+    
+    // Check for partial matches (case insensitive)
+    const lowerName = name.toLowerCase();
+    for (const [french, english] of Object.entries(translations)) {
+      if (lowerName.includes(french.toLowerCase()) || french.toLowerCase().includes(lowerName)) {
+        return english;
+      }
+    }
+    
+    // If no translation found, return original name
+    return name;
   }
 
   /**
