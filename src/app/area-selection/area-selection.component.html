@@ -34,14 +34,6 @@
           <span class="icon">🏔️</span>
           <span class="value">{{ area.soilType }} Soil</span>
         </div>
-        <div class="vegetation-health" [ngClass]="'health-' + (getNDVIStatus(area.id)?.color || 'gray')">
-          <span class="icon">{{ getVegetationHealthIcon(getNDVIStatus(area.id)) }}</span>
-          <span class="value" *ngIf="!isLoadingNDVI(area.id)">{{ getVegetationHealthText(getNDVIStatus(area.id)) }}</span>
-          <span class="loading-text" *ngIf="isLoadingNDVI(area.id)">
-            <span class="mini-spinner"></span>
-            Loading vegetation data...
-          </span>
-        </div>
       </div>
       
       <p class="description">{{ area.description }}</p>

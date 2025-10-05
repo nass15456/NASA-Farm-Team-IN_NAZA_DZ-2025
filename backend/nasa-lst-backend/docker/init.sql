@@ -1,4 +1,4 @@
--- Create LST Data table
+-- Create LST Data table (normalized structure)
 CREATE TABLE IF NOT EXISTS lst_tr_sf_data (
     id SERIAL PRIMARY KEY,
     xllcorner DECIMAL(12,2),
@@ -7,17 +7,19 @@ CREATE TABLE IF NOT EXISTS lst_tr_sf_data (
     nrows INTEGER,
     ncols INTEGER,
     band VARCHAR(50),
-    units VARCHAR(20),
-    scale DECIMAL(10,8),
     latitude DECIMAL(10,6),
     longitude DECIMAL(10,6),
     header TEXT,
-    subset JSONB,
+    -- Normalized subset fields (each JSON object becomes a row)
+    subset_band VARCHAR(50),
+    subset_calendar_date DATE,
+    subset_modis_date VARCHAR(20),
+    subset_data JSONB, -- Array of values from the original 'data' field
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create VGT NDVI/EVI Data table (same structure as LST)
+-- Create VGT NDVI/EVI Data table (normalized structure)
 CREATE TABLE IF NOT EXISTS vgt_ndvi_evi_data (
     id SERIAL PRIMARY KEY,
     xllcorner DECIMAL(12,2),
@@ -26,25 +28,32 @@ CREATE TABLE IF NOT EXISTS vgt_ndvi_evi_data (
     nrows INTEGER,
     ncols INTEGER,
     band VARCHAR(50),
-    units VARCHAR(20),
-    scale DECIMAL(10,8),
     latitude DECIMAL(10,6),
     longitude DECIMAL(10,6),
     header TEXT,
-    subset JSONB,
+    -- Normalized subset fields (each JSON object becomes a row)
+    subset_band VARCHAR(50),
+    subset_calendar_date DATE,
+    subset_modis_date VARCHAR(20),
+    subset_data JSONB, -- Array of values from the original 'data' field
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create index on location for spatial queries
+-- Create optimized indexes for normalized structure
 CREATE INDEX IF NOT EXISTS idx_lst_location ON lst_tr_sf_data (latitude, longitude);
+CREATE INDEX IF NOT EXISTS idx_lst_location_band ON lst_tr_sf_data (latitude, longitude, subset_band);
+CREATE INDEX IF NOT EXISTS idx_lst_band ON lst_tr_sf_data (subset_band);
+CREATE INDEX IF NOT EXISTS idx_lst_date ON lst_tr_sf_data (subset_calendar_date);
+CREATE INDEX IF NOT EXISTS idx_lst_compound ON lst_tr_sf_data (latitude, longitude, subset_band, subset_calendar_date);
+
 CREATE INDEX IF NOT EXISTS idx_vgt_location ON vgt_ndvi_evi_data (latitude, longitude);
+CREATE INDEX IF NOT EXISTS idx_vgt_location_band ON vgt_ndvi_evi_data (latitude, longitude, subset_band);
+CREATE INDEX IF NOT EXISTS idx_vgt_band ON vgt_ndvi_evi_data (subset_band);
+CREATE INDEX IF NOT EXISTS idx_vgt_date ON vgt_ndvi_evi_data (subset_calendar_date);
+CREATE INDEX IF NOT EXISTS idx_vgt_compound ON vgt_ndvi_evi_data (latitude, longitude, subset_band, subset_calendar_date);
 
--- Create index on subset for JSON queries
-CREATE INDEX IF NOT EXISTS idx_lst_subset ON lst_tr_sf_data USING GIN (subset);
-CREATE INDEX IF NOT EXISTS idx_vgt_subset ON vgt_ndvi_evi_data USING GIN (subset);
-
--- Create function to filter LST data by date range
+-- Create function to filter LST data by date range (updated for normalized structure)
 CREATE OR REPLACE FUNCTION filter_lst_by_date(
     start_date DATE,
     end_date DATE
@@ -54,8 +63,10 @@ RETURNS TABLE (
     latitude DECIMAL(10,6),
     longitude DECIMAL(10,6),
     band VARCHAR(50),
-    units VARCHAR(20),
-    filtered_subset JSONB
+    subset_band VARCHAR(50),
+    subset_calendar_date DATE,
+    subset_modis_date VARCHAR(20),
+    subset_data JSONB
 ) AS $$
 BEGIN
     RETURN QUERY
@@ -64,18 +75,16 @@ BEGIN
         ld.latitude,
         ld.longitude,
         ld.band,
-        ld.units,
-        jsonb_agg(
-            subset_item
-        ) as filtered_subset
-    FROM lst_tr_sf_data ld,
-    LATERAL jsonb_array_elements(ld.subset) AS subset_item
-    WHERE (subset_item->>'calendar_date')::date BETWEEN start_date AND end_date
-    GROUP BY ld.id, ld.latitude, ld.longitude, ld.band, ld.units;
+        ld.subset_band,
+        ld.subset_calendar_date,
+        ld.subset_modis_date,
+        ld.subset_data
+    FROM lst_tr_sf_data ld
+    WHERE ld.subset_calendar_date BETWEEN start_date AND end_date;
 END;
 $$ LANGUAGE plpgsql;
 
--- Create function to get temperature statistics by location
+-- Create function to get temperature statistics by location (updated for normalized structure)
 CREATE OR REPLACE FUNCTION get_temperature_stats(
     lat_min DECIMAL(10,6),
     lat_max DECIMAL(10,6),
@@ -98,12 +107,11 @@ BEGIN
             ld.id,
             ld.latitude,
             ld.longitude,
-            jsonb_array_elements_text(subset_item->'data')::DECIMAL * ld.scale::DECIMAL AS temp_kelvin
-        FROM lst_tr_sf_data ld,
-        LATERAL jsonb_array_elements(ld.subset) AS subset_item
+            jsonb_array_elements_text(ld.subset_data)::DECIMAL * ld.scale::DECIMAL AS temp_kelvin
+        FROM lst_tr_sf_data ld
         WHERE ld.latitude BETWEEN lat_min AND lat_max
         AND ld.longitude BETWEEN lon_min AND lon_max
-        AND ld.band = 'LST_Day_1km'
+        AND ld.subset_band = 'LST_Day_1km'
     )
     SELECT 
         td.id,
@@ -118,7 +126,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Create function to get NDVI/EVI vegetation statistics by location
+-- Create function to get NDVI/EVI vegetation statistics by location (updated for normalized structure)
 CREATE OR REPLACE FUNCTION get_vegetation_stats(
     lat_min DECIMAL(10,6),
     lat_max DECIMAL(10,6),
@@ -143,25 +151,24 @@ BEGIN
             vd.id,
             vd.latitude,
             vd.longitude,
-            vd.band,
-            jsonb_array_elements_text(subset_item->'data')::DECIMAL * vd.scale::DECIMAL AS veg_value
-        FROM vgt_ndvi_evi_data vd,
-        LATERAL jsonb_array_elements(vd.subset) AS subset_item
+            vd.subset_band,
+            jsonb_array_elements_text(vd.subset_data)::DECIMAL * vd.scale::DECIMAL AS veg_value
+        FROM vgt_ndvi_evi_data vd
         WHERE vd.latitude BETWEEN lat_min AND lat_max
         AND vd.longitude BETWEEN lon_min AND lon_max
-        AND (band_name IS NULL OR vd.band ILIKE '%' || band_name || '%')
+        AND (band_name IS NULL OR vd.subset_band ILIKE '%' || band_name || '%')
     )
     SELECT 
         vd.id,
         vd.latitude,
         vd.longitude,
-        vd.band,
+        vd.subset_band,
         ROUND(AVG(vd.veg_value), 4) as avg_value,
         ROUND(MIN(vd.veg_value), 4) as min_value,
         ROUND(MAX(vd.veg_value), 4) as max_value,
         COUNT(*)::INTEGER as data_points
     FROM veg_data vd
-    GROUP BY vd.id, vd.latitude, vd.longitude, vd.band;
+    GROUP BY vd.id, vd.latitude, vd.longitude, vd.subset_band;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -286,29 +293,37 @@ CREATE TABLE IF NOT EXISTS vgt_statistics (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create indexes for statistics tables
+-- Create optimized indexes for statistics tables
 CREATE INDEX IF NOT EXISTS idx_lst_statistics_location ON lst_statistics (latitude, longitude);
-CREATE INDEX IF NOT EXISTS idx_lst_statistics_modis_date_band ON lst_statistics (modis_date, band);
+CREATE INDEX IF NOT EXISTS idx_lst_statistics_location_band ON lst_statistics (latitude, longitude, band);
+CREATE INDEX IF NOT EXISTS idx_lst_statistics_band_location ON lst_statistics (band, latitude, longitude);
 CREATE INDEX IF NOT EXISTS idx_lst_statistics_calendar_date ON lst_statistics (calendar_date);
-CREATE INDEX IF NOT EXISTS idx_lst_statistics_band ON lst_statistics (band);
+CREATE INDEX IF NOT EXISTS idx_lst_statistics_compound ON lst_statistics (latitude, longitude, band, calendar_date);
 
 CREATE INDEX IF NOT EXISTS idx_vgt_statistics_location ON vgt_statistics (latitude, longitude);
-CREATE INDEX IF NOT EXISTS idx_vgt_statistics_modis_date_band ON vgt_statistics (modis_date, band);
+CREATE INDEX IF NOT EXISTS idx_vgt_statistics_location_band ON vgt_statistics (latitude, longitude, band);
+CREATE INDEX IF NOT EXISTS idx_vgt_statistics_band_location ON vgt_statistics (band, latitude, longitude);
 CREATE INDEX IF NOT EXISTS idx_vgt_statistics_calendar_date ON vgt_statistics (calendar_date);
-CREATE INDEX IF NOT EXISTS idx_vgt_statistics_band ON vgt_statistics (band);
+CREATE INDEX IF NOT EXISTS idx_vgt_statistics_compound ON vgt_statistics (latitude, longitude, band, calendar_date);
 
--- Create function to get combined LST data with statistics
+-- Drop old function signature to avoid overload conflicts
+DROP FUNCTION IF EXISTS get_lst_data_with_statistics(DECIMAL(10,6), DECIMAL(10,6), VARCHAR(50));
+
+-- Create super-optimized function using normalized structure
 CREATE OR REPLACE FUNCTION get_lst_data_with_statistics(
     target_latitude DECIMAL(10,6) DEFAULT NULL,
     target_longitude DECIMAL(10,6) DEFAULT NULL,
-    band_filter VARCHAR(50) DEFAULT NULL
+    band_filter VARCHAR(50) DEFAULT NULL,
+    limit_count INTEGER DEFAULT 10
 )
 RETURNS TABLE (
     lst_id INTEGER,
     lat DECIMAL(10,6),
     lon DECIMAL(10,6),
     lst_band VARCHAR(50),
-    lst_units VARCHAR(20),
+    subset_band VARCHAR(50),
+    subset_calendar_date DATE,
+    subset_modis_date VARCHAR(20),
     modis_date VARCHAR(20),
     calendar_date DATE,
     value_center VARCHAR(50),
@@ -320,14 +335,17 @@ RETURNS TABLE (
     pixels_pass INTEGER
 ) AS $$
 BEGIN
+    -- Super-optimized: direct column matching, no JSONB operations
     RETURN QUERY
-    SELECT 
+    SELECT
         ld.id as lst_id,
         ld.latitude as lat,
         ld.longitude as lon,
-        COALESCE(ls.band, ld.band) as lst_band,
-        ld.units as lst_units,
-        COALESCE(ls.modis_date, 'N/A') as modis_date,
+        ld.band as lst_band,
+        ld.subset_band,
+        ld.subset_calendar_date,
+        ld.subset_modis_date,
+        ls.modis_date,
         ls.calendar_date,
         ls.value_center,
         ls.value_min,
@@ -337,31 +355,38 @@ BEGIN
         ls.pixels_total,
         ls.pixels_pass
     FROM lst_tr_sf_data ld
-    LEFT JOIN lst_statistics ls ON (
-        ld.latitude = ls.latitude 
+    INNER JOIN lst_statistics ls ON (
+        ld.latitude = ls.latitude
         AND ld.longitude = ls.longitude
-        AND (band_filter IS NULL OR ld.band = band_filter OR ls.band = band_filter)
+        AND ld.subset_band = ls.band
     )
-    WHERE 
+    WHERE
         (target_latitude IS NULL OR ld.latitude = target_latitude)
         AND (target_longitude IS NULL OR ld.longitude = target_longitude)
-        AND (band_filter IS NULL OR ld.band = band_filter)
-    ORDER BY ld.latitude, ld.longitude, ls.calendar_date;
+        AND (band_filter IS NULL OR ld.subset_band = band_filter)
+    ORDER BY ld.latitude, ld.longitude, ls.calendar_date
+    LIMIT COALESCE(limit_count, 10);
 END;
 $$ LANGUAGE plpgsql;
 
--- Create function to get combined VGT data with statistics
+-- Drop old function signature to avoid overload conflicts
+DROP FUNCTION IF EXISTS get_vgt_data_with_statistics(DECIMAL(10,6), DECIMAL(10,6), VARCHAR(50));
+
+-- Create super-optimized function using normalized structure
 CREATE OR REPLACE FUNCTION get_vgt_data_with_statistics(
     target_latitude DECIMAL(10,6) DEFAULT NULL,
     target_longitude DECIMAL(10,6) DEFAULT NULL,
-    band_filter VARCHAR(50) DEFAULT NULL
+    band_filter VARCHAR(50) DEFAULT NULL,
+    limit_count INTEGER DEFAULT 10
 )
 RETURNS TABLE (
     vgt_id INTEGER,
     lat DECIMAL(10,6),
     lon DECIMAL(10,6),
     vgt_band VARCHAR(50),
-    vgt_units VARCHAR(20),
+    subset_band VARCHAR(50),
+    subset_calendar_date DATE,
+    subset_modis_date VARCHAR(20),
     modis_date VARCHAR(20),
     calendar_date DATE,
     value_center VARCHAR(50),
@@ -373,14 +398,17 @@ RETURNS TABLE (
     pixels_pass INTEGER
 ) AS $$
 BEGIN
+    -- Super-optimized: direct column matching, no JSONB operations
     RETURN QUERY
     SELECT 
         vd.id as vgt_id,
         vd.latitude as lat,
         vd.longitude as lon,
-        COALESCE(vs.band, vd.band) as vgt_band,
-        vd.units as vgt_units,
-        COALESCE(vs.modis_date, 'N/A') as modis_date,
+        vd.band as vgt_band,
+        vd.subset_band,
+        vd.subset_calendar_date,
+        vd.subset_modis_date,
+        vs.modis_date,
         vs.calendar_date,
         vs.value_center,
         vs.value_min,
@@ -390,16 +418,145 @@ BEGIN
         vs.pixels_total,
         vs.pixels_pass
     FROM vgt_ndvi_evi_data vd
-    LEFT JOIN vgt_statistics vs ON (
+    INNER JOIN vgt_statistics vs ON (
         vd.latitude = vs.latitude 
         AND vd.longitude = vs.longitude
-        AND (band_filter IS NULL OR vd.band = band_filter OR vs.band = band_filter)
+        AND vd.subset_band = vs.band
     )
     WHERE 
         (target_latitude IS NULL OR vd.latitude = target_latitude)
         AND (target_longitude IS NULL OR vd.longitude = target_longitude)
-        AND (band_filter IS NULL OR vd.band = band_filter)
-    ORDER BY vd.latitude, vd.longitude, vs.calendar_date;
+        AND (band_filter IS NULL OR vd.subset_band = band_filter)
+    ORDER BY vd.latitude, vd.longitude, vs.calendar_date
+    LIMIT COALESCE(limit_count, 10);
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create function to insert LST data with old JSONB format (adapts to new normalized structure)
+CREATE OR REPLACE FUNCTION insert_lst_data(
+    xllcorner DECIMAL(12,2),
+    yllcorner DECIMAL(12,2),
+    cellsize DECIMAL(15,10),
+    nrows INTEGER,
+    ncols INTEGER,
+    band VARCHAR(50),
+    latitude DECIMAL(10,6),
+    longitude DECIMAL(10,6),
+    header TEXT,
+    subset JSONB
+)
+RETURNS TABLE (
+    inserted_count INTEGER
+) AS $$
+DECLARE
+    count_inserted INTEGER := 0;
+BEGIN
+    -- Insert each subset item as a separate row in the normalized structure
+    INSERT INTO lst_tr_sf_data (
+        xllcorner, yllcorner, cellsize, nrows, ncols, band,
+        latitude, longitude, header, subset_band, subset_calendar_date, 
+        subset_modis_date, subset_data
+    )
+    SELECT 
+        insert_lst_data.xllcorner, insert_lst_data.yllcorner, insert_lst_data.cellsize, insert_lst_data.nrows, insert_lst_data.ncols, 
+        insert_lst_data.band, insert_lst_data.latitude, insert_lst_data.longitude, insert_lst_data.header,
+        subset_item->>'band' as subset_band,
+        (subset_item->>'calendar_date')::DATE as subset_calendar_date,
+        subset_item->>'modis_date' as subset_modis_date,
+        subset_item->'data' as subset_data
+    FROM jsonb_array_elements(insert_lst_data.subset) AS subset_item;
+    
+    GET DIAGNOSTICS count_inserted = ROW_COUNT;
+    
+    RETURN QUERY SELECT count_inserted;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create function to insert VGT data with old JSONB format (adapts to new normalized structure)
+CREATE OR REPLACE FUNCTION insert_vgt_data(
+    xllcorner DECIMAL(12,2),
+    yllcorner DECIMAL(12,2),
+    cellsize DECIMAL(15,10),
+    nrows INTEGER,
+    ncols INTEGER,
+    band VARCHAR(50),
+    latitude DECIMAL(10,6),
+    longitude DECIMAL(10,6),
+    header TEXT,
+    subset JSONB
+)
+RETURNS TABLE (
+    inserted_count INTEGER
+) AS $$
+DECLARE
+    count_inserted INTEGER := 0;
+BEGIN
+    -- Insert each subset item as a separate row in the normalized structure
+    INSERT INTO vgt_ndvi_evi_data (
+        xllcorner, yllcorner, cellsize, nrows, ncols, band,
+        latitude, longitude, header, subset_band, subset_calendar_date, 
+        subset_modis_date, subset_data
+    )
+    SELECT 
+        insert_vgt_data.xllcorner, insert_vgt_data.yllcorner, insert_vgt_data.cellsize, insert_vgt_data.nrows, insert_vgt_data.ncols, 
+        insert_vgt_data.band, insert_vgt_data.latitude, insert_vgt_data.longitude, insert_vgt_data.header,
+        subset_item->>'band' as subset_band,
+        (subset_item->>'calendar_date')::DATE as subset_calendar_date,
+        subset_item->>'modis_date' as subset_modis_date,
+        subset_item->'data' as subset_data
+    FROM jsonb_array_elements(insert_vgt_data.subset) AS subset_item;
+    
+    GET DIAGNOSTICS count_inserted = ROW_COUNT;
+    
+    RETURN QUERY SELECT count_inserted;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create function to insert LST data from JSON (PostgREST compatible)
+CREATE OR REPLACE FUNCTION insert_lst_data_from_json(
+    data_json JSONB
+)
+RETURNS TABLE (
+    inserted_count INTEGER
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT * FROM insert_lst_data(
+        (data_json->>'xllcorner')::DECIMAL(12,2),
+        (data_json->>'yllcorner')::DECIMAL(12,2),
+        (data_json->>'cellsize')::DECIMAL(15,10),
+        (data_json->>'nrows')::INTEGER,
+        (data_json->>'ncols')::INTEGER,
+        (data_json->>'band')::VARCHAR(50),
+        (data_json->>'latitude')::DECIMAL(10,6),
+        (data_json->>'longitude')::DECIMAL(10,6),
+        (data_json->>'header')::TEXT,
+        data_json->'subset'
+    );
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create function to insert VGT data from JSON (PostgREST compatible)
+CREATE OR REPLACE FUNCTION insert_vgt_data_from_json(
+    data_json JSONB
+)
+RETURNS TABLE (
+    inserted_count INTEGER
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT * FROM insert_vgt_data(
+        (data_json->>'xllcorner')::DECIMAL(12,2),
+        (data_json->>'yllcorner')::DECIMAL(12,2),
+        (data_json->>'cellsize')::DECIMAL(15,10),
+        (data_json->>'nrows')::INTEGER,
+        (data_json->>'ncols')::INTEGER,
+        (data_json->>'band')::VARCHAR(50),
+        (data_json->>'latitude')::DECIMAL(10,6),
+        (data_json->>'longitude')::DECIMAL(10,6),
+        (data_json->>'header')::TEXT,
+        data_json->'subset'
+    );
 END;
 $$ LANGUAGE plpgsql;
 

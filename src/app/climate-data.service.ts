@@ -1777,4 +1777,84 @@ export class ClimateDataService {
     
     return locationData;
   }
+
+  /**
+   * Evaluate NDVI value and return status with color coding
+   * NDVI -1 to 0.2 = KO (red), 0.2 to 1 = OK (green)
+   */
+  evaluateNDVIStatus(ndviValue: number): NDVIStatus {
+    if (ndviValue < -1 || ndviValue > 1) {
+      return {
+        value: ndviValue,
+        status: 'unknown',
+        color: 'gray',
+        description: 'Invalid NDVI value'
+      };
+    }
+    
+    if (ndviValue >= -1 && ndviValue < 0.2) {
+      return {
+        value: ndviValue,
+        status: 'KO',
+        color: 'red',
+        description: 'Poor vegetation health'
+      };
+    } else if (ndviValue >= 0.2 && ndviValue <= 1) {
+      return {
+        value: ndviValue,
+        status: 'OK',
+        color: 'green',
+        description: 'Good vegetation health'
+      };
+    }
+
+    return {
+      value: ndviValue,
+      status: 'unknown',
+      color: 'gray',
+      description: 'Unknown vegetation status'
+    };
+  }
+
+  /**
+   * Get NDVI data using get_vgt_data_with_statistics function
+   */
+  getNDVIDataForLocation(latitude: number, longitude: number): Observable<VegetationData[]> {
+    const params = new HttpParams()
+      .set('target_latitude', 'eq.' + latitude.toFixed(6))
+      .set('target_longitude', 'eq.' + longitude.toFixed(6))
+      .set('band_filter', 'eq.NDVI');
+
+    return this.http.get<VegetationData[]>(`${this.POSTGREST_URL}/rpc/get_vgt_data_with_statistics`, { params }).pipe(
+      timeout(10000),
+      retry(2),
+      catchError(error => {
+        console.error('Error fetching NDVI data:', error);
+        return of([]);
+      })
+    );
+  }
+
+  /**
+   * Get NDVI status for a specific location
+   */
+  getNDVIStatusForLocation(latitude: number, longitude: number): Observable<NDVIStatus | null> {
+    return this.getNDVIDataForLocation(latitude, longitude).pipe(
+      map(data => {
+        if (data && data.length > 0) {
+          // Get the most recent NDVI data
+          const sortedData = data.sort((a, b) => 
+            new Date(b.calendar_date).getTime() - new Date(a.calendar_date).getTime()
+          );
+          const latestNDVI = sortedData[0];
+          return this.evaluateNDVIStatus(latestNDVI.value_mean);
+        }
+        return null;
+      }),
+      catchError(error => {
+        console.error('Error getting NDVI status:', error);
+        return of(null);
+      })
+    );
+  }
 }
