@@ -72,29 +72,129 @@ export class ClimateDataService {
    * Get a random location with climate data from the database
    */
   getRandomLocationData(): Observable<LocationData | null> {
-    // Query a larger sample to get more diverse real data
-    const randomOffset = Math.floor(Math.random() * 500); // Increase range for more variety
-    return this.http.get<any[]>(`${this.POSTGREST_URL}/lst_statistics?limit=5&offset=${randomOffset}`)
+    console.log('🎲 Getting truly random location from NASA database...');
+    
+    // Try multiple randomization strategies for maximum diversity
+    const randomStrategy = Math.floor(Math.random() * 3);
+    
+    if (randomStrategy === 0) {
+      return this.getRandomLocationWithCount();
+    } else if (randomStrategy === 1) {
+      return this.getRandomLocationWithLargeOffset();
+    } else {
+      return this.getRandomLocationWithMultipleBatches();
+    }
+  }
+
+  /**
+   * Strategy 1: Use database count for precise randomization
+   */
+  private getRandomLocationWithCount(): Observable<LocationData | null> {
+    console.log('📊 Strategy: Using database count for randomization');
+    
+    return this.http.get<any[]>(`${this.POSTGREST_URL}/lst_statistics?select=count`)
+      .pipe(
+        switchMap(countResult => {
+          let totalRecords = 10000; // Safe fallback
+          if (countResult && Array.isArray(countResult)) {
+            if (countResult.length > 0 && countResult[0].count) {
+              totalRecords = countResult[0].count;
+            } else {
+              totalRecords = Math.max(countResult.length * 100, 5000);
+            }
+          }
+          
+          console.log(`📊 Database has ${totalRecords} records`);
+          
+          const maxOffset = Math.max(totalRecords - 10, 1000);
+          const randomOffset = Math.floor(Math.random() * maxOffset);
+          
+          console.log(`🎯 Random offset: ${randomOffset}`);
+          
+          return this.http.get<any[]>(`${this.POSTGREST_URL}/lst_statistics?limit=10&offset=${randomOffset}`);
+        }),
+        switchMap(data => this.processRandomBatch(data, 'count-based')),
+        catchError(error => {
+          console.error('❌ Count strategy failed:', error);
+          return this.getRandomLocationWithLargeOffset();
+        })
+      );
+  }
+
+  /**
+   * Strategy 2: Use large random offset without count
+   */
+  private getRandomLocationWithLargeOffset(): Observable<LocationData | null> {
+    console.log('🎲 Strategy: Using large random offset');
+    
+    // Use a very large random offset (assuming database has thousands of records)
+    const largeRandomOffset = Math.floor(Math.random() * 50000); // Up to 50k offset
+    
+    return this.http.get<any[]>(`${this.POSTGREST_URL}/lst_statistics?limit=15&offset=${largeRandomOffset}`)
       .pipe(
         switchMap(data => {
-          if (data && data.length > 0) {
-            // Pick a random record from the returned batch for more diversity
-            const record = data[Math.floor(Math.random() * data.length)];
-            const latitude = record.latitude;
-            const longitude = record.longitude;
-            
-            console.log(`🌍 Using real NASA data for: ${latitude}°, ${longitude}°`);
-            
-            // Get comprehensive temperature data for this location using real LST data
-            return this.processLocationDataWithRealTemperatures(latitude, longitude);
+          if (!data || data.length === 0) {
+            // If offset is too large, try a smaller one
+            const smallerOffset = Math.floor(Math.random() * 5000);
+            console.log(`🔄 Offset too large, trying smaller: ${smallerOffset}`);
+            return this.http.get<any[]>(`${this.POSTGREST_URL}/lst_statistics?limit=15&offset=${smallerOffset}`);
           }
-          return of(this.getFallbackLocationData());
+          return of(data);
         }),
+        switchMap(data => this.processRandomBatch(data, 'large-offset')),
         catchError(error => {
-          console.error('Error fetching random location:', error);
+          console.error('❌ Large offset strategy failed:', error);
+          return this.getRandomLocationWithMultipleBatches();
+        })
+      );
+  }
+
+  /**
+   * Strategy 3: Fetch multiple small batches and pick randomly
+   */
+  private getRandomLocationWithMultipleBatches(): Observable<LocationData | null> {
+    console.log('🌍 Strategy: Using multiple random batches');
+    
+    // Generate 3 different random offsets
+    const offsets = [
+      Math.floor(Math.random() * 10000),
+      Math.floor(Math.random() * 20000) + 10000,
+      Math.floor(Math.random() * 15000) + 25000
+    ];
+    
+    // Pick one offset randomly
+    const selectedOffset = offsets[Math.floor(Math.random() * offsets.length)];
+    console.log(`🎯 Selected batch offset: ${selectedOffset}`);
+    
+    return this.http.get<any[]>(`${this.POSTGREST_URL}/lst_statistics?limit=20&offset=${selectedOffset}`)
+      .pipe(
+        switchMap(data => this.processRandomBatch(data, 'multi-batch')),
+        catchError(error => {
+          console.error('❌ Multi-batch strategy failed, using fallback:', error);
           return of(this.getFallbackLocationData());
         })
       );
+  }
+
+  /**
+   * Process a random batch of data and select one record
+   */
+  private processRandomBatch(data: any[], strategy: string): Observable<LocationData | null> {
+    if (!data || data.length === 0) {
+      console.warn(`⚠️ No data in ${strategy} batch, using fallback`);
+      return of(this.getFallbackLocationData());
+    }
+
+    // Pick a random record from the batch
+    const randomIndex = Math.floor(Math.random() * data.length);
+    const record = data[randomIndex];
+    const latitude = record.latitude;
+    const longitude = record.longitude;
+    
+    console.log(`🌍 ${strategy}: Selected location ${randomIndex + 1}/${data.length}: ${latitude}°, ${longitude}°`);
+    
+    // Get comprehensive temperature data for this location
+    return this.processLocationDataWithRealTemperatures(latitude, longitude);
   }
 
   /**
