@@ -1,0 +1,71 @@
+<div class="game-container">
+  <!-- Loading Spinner with Earth Planet -->
+  <div *ngIf="isLoading" class="loading-screen">
+    <app-mars-planet 
+      [isSpinning]="true" 
+      [isLoadingData]="false"
+      (planetClick)="onPlanetClick()">
+    </app-mars-planet>
+    <div class="loading-text">
+      <h1>Earth Agriculture Simulator</h1>
+      <p>Loading Earth exploration data...</p>
+      <div class="spinner"></div>
+    </div>
+  </div>
+
+  <!-- Main Game Screens -->
+  <div *ngIf="!isLoading" class="game-screen">
+    <!-- Earth Planet Selection Screen -->
+    <div *ngIf="currentScreen === 'planet'" class="planet-screen">
+      <div class="game-header">
+        <h1>Earth Agriculture Simulator</h1>
+        <p>Click on Earth to explore real agricultural areas with NASA climate data</p>
+        <div *ngIf="isLoadingData" class="loading-indicator">
+          <div class="spinner-small"></div>
+          <span>Loading climate data...</span>
+        </div>
+      </div>
+      <app-mars-planet 
+        [isSpinning]="false" 
+        [isLoadingData]="isLoadingData"
+        (planetClick)="onPlanetClick()">
+      </app-mars-planet>
+    </div>
+
+    <!-- Area Selection Screen -->
+    <div *ngIf="currentScreen === 'area-selection'" class="area-selection-screen">
+      <app-area-selection (areaSelected)="onAreaSelected($event)"></app-area-selection>
+    </div>
+
+
+
+    <!-- Farming Interface Screen -->
+    <div *ngIf="currentScreen === 'farming'" class="farming-screen">
+      <app-farming-interface 
+        [selectedArea]="selectedArea" 
+        [currentLocationData]="currentLocationData"
+        (startQuiz)="onStartQuiz()"
+        (backToPlanet)="onBackToPlanet()">
+      </app-farming-interface>
+    </div>
+
+    <!-- Quiz Screen -->
+    <div *ngIf="currentScreen === 'quiz'" class="quiz-screen">
+      <app-quiz 
+        [selectedArea]="selectedArea" 
+        [locationData]="currentLocationData"
+        (backToFarming)="onBackToFarming()">
+      </app-quiz>
+    </div>
+
+
+  </div>
+
+  <!-- Copyright Footer -->
+  <footer class="copyright-footer">
+    <div class="footer-content">
+      <span class="copyright-text">© IN_NASA_DZ - Earth Agriculture Simulator</span>
+      <span class="data-source">Powered by NASA Land Surface Temperature Data</span>
+    </div>
+  </footer>
+</div>

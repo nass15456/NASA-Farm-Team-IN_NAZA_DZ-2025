@@ -1,0 +1,606 @@
+.game-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #001a33 0%, #003d66 50%, #005588 100%);
+  color: white;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  overflow-x: hidden;
+}
+
+.loading-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  text-align: center;
+}
+
+.loading-text {
+  margin-top: 2rem;
+  
+  h1 {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+    color: #4fc3f7;
+    text-shadow: 0 0 10px rgba(79, 195, 247, 0.5);
+  }
+  
+  p {
+    font-size: 1.2rem;
+    color: #81c784;
+    margin-bottom: 2rem;
+  }
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  border-top: 4px solid #4fc3f7;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.spinner-small {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top: 2px solid #4fc3f7;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-right: 0.5rem;
+}
+
+.loading-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #81c784;
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+  display: inline-block;
+  margin-right: 0.5rem;
+}
+
+.loading-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1rem;
+  color: #81c784;
+  font-size: 0.9rem;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.game-screen {
+  min-height: 100vh;
+  padding: 2rem;
+}
+
+.game-header {
+  text-align: center;
+  margin-bottom: 2rem;
+  
+  h1, h2 {
+    color: #4fc3f7;
+    text-shadow: 0 0 10px rgba(79, 195, 247, 0.5);
+    margin-bottom: 1rem;
+  }
+  
+  h1 {
+    font-size: 2.5rem;
+  }
+  
+  h2 {
+    font-size: 2rem;
+  }
+  
+  p {
+    color: #81c784;
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
+  }
+}
+
+.area-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  margin: 1rem 0;
+  
+  .location-coords {
+    background: rgba(79, 195, 247, 0.2);
+    padding: 0.5rem 1rem;
+    border-radius: 15px;
+    font-size: 0.9rem;
+    color: #4fc3f7;
+    border: 1px solid rgba(79, 195, 247, 0.3);
+  }
+  
+  .temperature-info {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  
+  span {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 1rem;
+    backdrop-filter: blur(10px);
+  }
+  
+  .temp-day {
+    color: #ffb74d;
+  }
+  
+  .temp-night {
+    color: #7986cb;
+  }
+  
+  .temp-avg {
+    color: #4ecdc4;
+  }
+  
+  .soil {
+    color: #ffa726;
+  }
+  
+  .data-source {
+    background: rgba(76, 175, 80, 0.2);
+    padding: 0.3rem 0.8rem;
+    border-radius: 12px;
+    border: 1px solid rgba(76, 175, 80, 0.3);
+    
+    small {
+      color: #81c784;
+      font-size: 0.8rem;
+    }
+  }
+
+  .map-links {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-top: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .map-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    background: rgba(33, 150, 243, 0.2);
+    color: #64b5f6;
+    text-decoration: none;
+    padding: 0.4rem 0.8rem;
+    border-radius: 15px;
+    border: 1px solid rgba(33, 150, 243, 0.3);
+    font-size: 0.85rem;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(5px);
+
+    &:hover {
+      background: rgba(33, 150, 243, 0.3);
+      color: #90caf9;
+      border-color: rgba(33, 150, 243, 0.5);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(33, 150, 243, 0.2);
+    }
+
+    &:active {
+      transform: translateY(0);
+    }
+  }
+
+  .map-container {
+    margin-top: 1rem;
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    border: 2px solid rgba(79, 195, 247, 0.3);
+    background: rgba(255, 255, 255, 0.05);
+
+    iframe {
+      display: block;
+      border-radius: 13px;
+    }
+  }
+
+
+}
+
+.action-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.back-btn, .quiz-btn {
+  padding: 0.8rem 1.5rem;
+  border: none;
+  border-radius: 25px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.back-btn {
+  background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+  }
+}
+
+.quiz-btn {
+  background: linear-gradient(45deg, #f093fb 0%, #f5576c 100%);
+  color: white;
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(245, 87, 108, 0.4);
+  }
+}
+
+// Responsive design
+@media (max-width: 768px) {
+  .game-screen {
+    padding: 1rem;
+  }
+  
+  .game-header {
+    h1 {
+      font-size: 2rem;
+    }
+    
+    h2 {
+      font-size: 1.5rem;
+    }
+  }
+  
+  .area-info {
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+  }
+  
+  .action-buttons {
+    flex-direction: column;
+    align-items: center;
+  }
+}
+
+.quiz-info {
+  margin-top: 0.5rem;
+  text-align: center;
+  
+  small {
+    background: rgba(76, 175, 80, 0.2);
+    padding: 0.3rem 0.8rem;
+    border-radius: 12px;
+    border: 1px solid rgba(76, 175, 80, 0.3);
+    color: #81c784;
+    font-size: 0.8rem;
+  }
+}
+
+// Copyright Footer
+.copyright-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(
+    to right, 
+    rgba(0, 26, 51, 0.95) 0%, 
+    rgba(0, 61, 102, 0.95) 50%, 
+    rgba(0, 85, 136, 0.95) 100%
+  );
+  backdrop-filter: blur(15px);
+  border-top: 1px solid rgba(79, 195, 247, 0.2);
+  padding: 0.8rem 0;
+  z-index: 999;
+
+  .footer-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+
+    @media (max-width: 768px) {
+      flex-direction: column;
+      text-align: center;
+      padding: 0 1rem;
+    }
+  }
+
+  .copyright-text {
+    color: #4fc3f7;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    letter-spacing: 0.5px;
+
+    &::before {
+      content: '🛰️';
+      margin-right: 0.5rem;
+    }
+  }
+
+  .data-source {
+    color: #81c784;
+    font-size: 0.8rem;
+    opacity: 0.9;
+    font-style: italic;
+
+    &::before {
+      content: '📡';
+      margin-right: 0.3rem;
+    }
+  }
+}
+
+// Guessing Game Styles
+.guessing-game {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.temperature-clues {
+  display: flex;
+  gap: 2rem;
+  margin: 2rem 0;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.temp-card, .clue-card {
+  background: linear-gradient(135deg, #FF7043 0%, #FF5722 100%);
+  padding: 1.5rem;
+  border-radius: 20px;
+  color: white;
+  text-align: center;
+  box-shadow: 0 8px 25px rgba(255, 87, 34, 0.3);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  min-width: 200px;
+
+  h3 {
+    margin: 0 0 1rem 0;
+    font-size: 1.3rem;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+  }
+
+  .temperature-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+
+    span {
+      background: rgba(255, 255, 255, 0.2);
+      padding: 0.5rem 1rem;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 1rem;
+    }
+  }
+}
+
+.clue-card {
+  background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%);
+  box-shadow: 0 8px 25px rgba(76, 175, 80, 0.3);
+  animation: slideIn 0.5s ease-out;
+}
+
+.guessing-input {
+  background: rgba(255, 255, 255, 0.9);
+  padding: 2rem;
+  border-radius: 20px;
+  text-align: center;
+  margin: 2rem 0;
+  box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+
+  h3 {
+    color: #1976D2;
+    margin-bottom: 1rem;
+    font-size: 1.4rem;
+  }
+
+  .guess-input {
+    width: 100%;
+    max-width: 400px;
+    padding: 1rem;
+    border: 3px solid #4FC3F7;
+    border-radius: 15px;
+    font-size: 1.1rem;
+    text-align: center;
+    margin-bottom: 1rem;
+    outline: none;
+    transition: all 0.3s ease;
+
+    &:focus {
+      border-color: #1976D2;
+      box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.2);
+    }
+
+    &::placeholder {
+      color: #999;
+    }
+  }
+
+  .guess-buttons {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .submit-btn, .hint-btn {
+    padding: 0.8rem 2rem;
+    border: none;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
+  .submit-btn {
+    background: linear-gradient(45deg, #4CAF50, #45a049);
+    color: white;
+
+    &:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 15px rgba(76, 175, 80, 0.4);
+    }
+  }
+
+  .hint-btn {
+    background: linear-gradient(45deg, #FF9800, #F57C00);
+    color: white;
+
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 15px rgba(255, 152, 0, 0.4);
+    }
+  }
+}
+
+.guess-result {
+  background: linear-gradient(135deg, #E1F5FE 0%, #B3E5FC 100%);
+  padding: 2rem;
+  border-radius: 20px;
+  text-align: center;
+  margin: 2rem 0;
+
+  .user-guess-display {
+    margin-bottom: 1.5rem;
+
+    h3 {
+      color: #0277BD;
+      margin-bottom: 0.5rem;
+    }
+
+    .guess-text {
+      background: rgba(255, 255, 255, 0.8);
+      padding: 1rem;
+      border-radius: 12px;
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: #1976D2;
+      border: 2px solid #4FC3F7;
+    }
+  }
+
+  .reveal-btn {
+    background: linear-gradient(45deg, #FF5722, #D84315);
+    color: white;
+    padding: 1rem 2rem;
+    border: none;
+    border-radius: 15px;
+    font-size: 1.2rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+
+    &:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 20px rgba(255, 87, 34, 0.4);
+    }
+  }
+}
+
+.answer-revealed {
+  .game-header {
+    text-align: center;
+    
+    h2 {
+      color: #4CAF50;
+      font-size: 2rem;
+      margin-bottom: 1rem;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+    }
+  }
+
+  .description {
+    background: rgba(76, 175, 80, 0.1);
+    padding: 1rem;
+    border-radius: 12px;
+    margin: 1rem 0;
+    font-style: italic;
+    color: #2E7D32;
+    border-left: 4px solid #4CAF50;
+  }
+
+  .play-again-btn {
+    background: linear-gradient(45deg, #9C27B0, #7B1FA2);
+    color: white;
+    padding: 0.8rem 1.5rem;
+    border: none;
+    border-radius: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 15px rgba(156, 39, 176, 0.4);
+    }
+  }
+}
+
+// Responsive design for guessing game
+@media (max-width: 768px) {
+  .temperature-clues {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .temp-card, .clue-card {
+    min-width: auto;
+    width: 100%;
+    max-width: 300px;
+  }
+
+  .guessing-input {
+    padding: 1rem;
+    
+    .guess-buttons {
+      flex-direction: column;
+      align-items: center;
+    }
+  }
+}
+
+// Adjust main content to account for footer
+.game-container {
+  padding-bottom: 4rem; // Space for footer
+
+  @media (max-width: 768px) {
+    padding-bottom: 5rem; // More space on mobile
+  }
+}
+

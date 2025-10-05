@@ -1,0 +1,72 @@
+/* You can add global styles to this file, and also import other style files */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  margin: 0;
+  padding: 0;
+  background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+html, body {
+  height: 100%;
+}
+
+// HTML5 Drag and Drop styles
+[draggable="true"] {
+  cursor: grab;
+  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+[draggable="true"]:active {
+  cursor: grabbing;
+  transform: scale(1.05);
+}
+
+.dragging {
+  opacity: 0.8;
+  transform: scale(1.05);
+}
+
+.drop-zone {
+  min-height: 60px;
+  transition: all 0.3s ease;
+}
+
+// Scrollbar styling
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+  
+  &:hover {
+    background: rgba(255, 255, 255, 0.5);
+  }
+}
+
+// Button focus styles
+button:focus {
+  outline: 2px solid #4ecdc4;
+  outline-offset: 2px;
+}
+
+// Selection styles
+::selection {
+  background: rgba(78, 205, 196, 0.3);
+  color: white;
+}

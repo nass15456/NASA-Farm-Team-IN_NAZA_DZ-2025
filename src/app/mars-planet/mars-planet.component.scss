@@ -1,0 +1,171 @@
+.mars-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 400px;
+  cursor: pointer;
+}
+
+.mars-planet {
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+  position: relative;
+  background: radial-gradient(circle at 30% 30%, #4fc3f7, #2196f3, #1976d2, #0d47a1);
+  box-shadow: 
+    0 0 50px rgba(33, 150, 243, 0.4),
+    inset -20px -20px 40px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  overflow: hidden;
+  
+  &:hover {
+    transform: scale(1.05);
+    box-shadow: 
+      0 0 60px rgba(33, 150, 243, 0.6),
+      inset -20px -20px 40px rgba(0, 0, 0, 0.3);
+  }
+  
+  &.spinning {
+    animation: rotate 4s linear infinite;
+  }
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.mars-surface {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+.continent {
+  position: absolute;
+  border-radius: 30% 70% 40% 60%;
+  background: radial-gradient(circle, #4caf50, #388e3c, #2e7d32);
+  box-shadow: inset 2px 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.continent-1 {
+  width: 60px;
+  height: 45px;
+  top: 25%;
+  left: 20%;
+  transform: rotate(15deg);
+}
+
+.continent-2 {
+  width: 45px;
+  height: 35px;
+  top: 55%;
+  left: 65%;
+  transform: rotate(-20deg);
+}
+
+.continent-3 {
+  width: 50px;
+  height: 40px;
+  top: 40%;
+  left: 10%;
+  transform: rotate(45deg);
+}
+
+.ice-cap {
+  position: absolute;
+  background: radial-gradient(circle, #e3f2fd, #bbdefb);
+  border-radius: 50%;
+  opacity: 0.8;
+}
+
+.ice-north {
+  width: 60px;
+  height: 60px;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.ice-south {
+  width: 50px;
+  height: 50px;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.cloud-system {
+  position: absolute;
+  width: 80px;
+  height: 40px;
+  background: linear-gradient(45deg, rgba(255, 255, 255, 0.6), rgba(224, 224, 224, 0.4));
+  border-radius: 50%;
+  top: 35%;
+  right: 10%;
+  animation: swirl 3s ease-in-out infinite alternate;
+}
+
+@keyframes swirl {
+  0% {
+    transform: rotate(0deg) scale(1);
+    opacity: 0.3;
+  }
+  100% {
+    transform: rotate(10deg) scale(1.1);
+    opacity: 0.6;
+  }
+}
+
+.mars-glow {
+  position: absolute;
+  top: -20px;
+  left: -20px;
+  right: -20px;
+  bottom: -20px;
+  border-radius: 50%;
+  background: radial-gradient(circle, transparent 60%, rgba(33, 150, 243, 0.2) 70%, transparent 80%);
+  pointer-events: none;
+}
+
+.click-hint {
+  margin-top: 2rem;
+  text-align: center;
+  
+  p {
+    color: #ffd93d;
+    font-size: 1.2rem;
+    animation: pulse 2s ease-in-out infinite;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.05);
+  }
+}
+
+// Responsive design
+@media (max-width: 768px) {
+  .mars-planet {
+    width: 250px;
+    height: 250px;
+  }
+  
+  .mars-container {
+    height: 350px;
+  }
+}

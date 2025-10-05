@@ -1,0 +1,229 @@
+.world-map-container {
+  background: linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%);
+  border-radius: 20px;
+  padding: 1.5rem;
+  margin: 1rem 0;
+  border: 3px solid #4FC3F7;
+  box-shadow: 0 8px 25px rgba(79, 195, 247, 0.3);
+  font-family: 'Comic Sans MS', cursive, sans-serif;
+}
+
+.map-header {
+  text-align: center;
+  margin-bottom: 1rem;
+
+  h3 {
+    color: #1976D2;
+    font-size: 1.4rem;
+    margin: 0 0 0.5rem 0;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+  }
+
+  p {
+    margin: 0.25rem 0;
+    color: #0277BD;
+    font-weight: 600;
+    font-size: 1rem;
+  }
+}
+
+.world-map {
+  background: radial-gradient(ellipse at center, #81D4FA 0%, #4FC3F7 100%);
+  border-radius: 15px;
+  padding: 1rem;
+  border: 2px solid #29B6F6;
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: 
+      radial-gradient(circle at 20% 20%, rgba(255,255,255,0.3) 2%, transparent 3%),
+      radial-gradient(circle at 60% 70%, rgba(255,255,255,0.2) 1%, transparent 2%),
+      radial-gradient(circle at 80% 40%, rgba(255,255,255,0.1) 1.5%, transparent 2.5%);
+    animation: float 20s infinite linear;
+    pointer-events: none;
+  }
+}
+
+@keyframes float {
+  0% { transform: translateX(-50%) translateY(-50%) rotate(0deg); }
+  100% { transform: translateX(-50%) translateY(-50%) rotate(360deg); }
+}
+
+.map-svg {
+  width: 100%;
+  height: auto;
+  max-height: 300px;
+  border-radius: 10px;
+  background: #E1F5FE;
+  box-shadow: inset 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.ocean {
+  filter: url(#wave-filter);
+}
+
+.continent {
+  stroke: #2E7D32;
+  stroke-width: 2;
+  transition: all 0.3s ease;
+  cursor: pointer;
+
+  &:hover {
+    filter: brightness(1.1);
+    transform: scale(1.02);
+    transform-origin: center;
+  }
+
+  &.north-america { fill: #81C784; }
+  &.south-america { fill: #A5D6A7; }
+  &.europe { fill: #C8E6C9; }
+  &.africa { fill: #DCEDC8; }
+  &.asia { fill: #E8F5E8; }
+  &.australia { fill: #F1F8E9; }
+  &.greenland { fill: #E0E0E0; }
+}
+
+.location-pin {
+  animation: bounce 2s infinite ease-in-out;
+  cursor: pointer;
+  filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.3));
+
+  .pin-body {
+    transition: all 0.3s ease;
+  }
+
+  .pin-head {
+    transition: all 0.3s ease;
+  }
+
+  &:hover {
+    .pin-body {
+      fill: #FF7043;
+    }
+    .pin-head {
+      fill: #D84315;
+    }
+  }
+}
+
+@keyframes bounce {
+  0%, 20%, 50%, 80%, 100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-8px);
+  }
+  60% {
+    transform: translateY(-4px);
+  }
+}
+
+.grid-lines {
+  line {
+    opacity: 0.3;
+  }
+}
+
+.location-info {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 15px;
+  border: 2px solid #81C784;
+}
+
+.coordinates {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  padding: 0.5rem 1rem;
+  background: linear-gradient(45deg, #E8F5E8, #C8E6C9);
+  border-radius: 10px;
+  border: 1px solid #81C784;
+
+  .coord-label {
+    font-weight: 600;
+    color: #2E7D32;
+  }
+
+  .coord-value {
+    font-family: 'Courier New', monospace;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 0.25rem 0.5rem;
+    border-radius: 5px;
+    color: #1B5E20;
+    font-weight: bold;
+  }
+}
+
+.fun-facts {
+  .fact {
+    background: linear-gradient(45deg, #FFF9C4, #FFECB3);
+    padding: 0.75rem 1rem;
+    border-radius: 12px;
+    border: 2px solid #FFB74D;
+    color: #E65100;
+    font-weight: 600;
+    text-align: center;
+    font-size: 0.95rem;
+    box-shadow: 0 3px 10px rgba(255, 183, 77, 0.3);
+    
+    &::before {
+      content: '💡 Fun Fact: ';
+      font-weight: bold;
+    }
+  }
+}
+
+// Responsive design
+@media (max-width: 768px) {
+  .world-map-container {
+    padding: 1rem;
+    margin: 0.5rem 0;
+  }
+
+  .map-header {
+    h3 {
+      font-size: 1.2rem;
+    }
+    
+    p {
+      font-size: 0.9rem;
+    }
+  }
+
+  .coordinates {
+    flex-direction: column;
+    text-align: center;
+    gap: 0.25rem;
+  }
+
+  .location-pin {
+    transform: scale(1.2); // Make pin bigger on mobile
+  }
+}
+
+// Animation for when component loads
+.world-map-container {
+  animation: slideIn 0.8s ease-out;
+}
+
+@keyframes slideIn {
+  0% {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}

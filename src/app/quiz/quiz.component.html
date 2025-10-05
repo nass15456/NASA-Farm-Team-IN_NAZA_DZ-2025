@@ -1,0 +1,93 @@
+<div class="quiz-container" *ngIf="currentQuestion">
+  <div class="quiz-content">
+    <!-- Question Section -->
+    <div class="question-section" *ngIf="!showResult">
+      <div class="question-header">
+        <h3>Knowledge Test</h3>
+        <div class="area-context" *ngIf="selectedArea">
+          <span class="area-name">{{ selectedArea.name }}</span>
+          <div class="area-conditions">
+            <span class="condition">🌡️ {{ selectedArea.temperature }}°C</span>
+            <span class="condition">🌍 {{ selectedArea.soilType }} Soil</span>
+          </div>
+        </div>
+      </div>
+      
+      <div class="question-content">
+        <h4 class="question-text">{{ currentQuestion.question }}</h4>
+        
+        <div class="answer-options">
+          <div 
+            *ngFor="let option of currentQuestion.options; let i = index"
+            class="answer-option"
+            [class.selected]="selectedAnswer === i"
+            (click)="selectAnswer(i)">
+            <div class="option-marker">{{ getOptionLetter(i) }}</div>
+            <div class="option-text">{{ option }}</div>
+          </div>
+        </div>
+        
+        <div class="quiz-actions">
+          <button 
+            class="submit-btn" 
+            [disabled]="selectedAnswer === null"
+            (click)="submitAnswer()">
+            Submit Answer
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Result Section -->
+    <div class="result-section" *ngIf="showResult">
+      <div class="result-header">
+        <div class="result-icon" [class.correct]="isCorrect" [class.incorrect]="!isCorrect">
+          {{ isCorrect ? '✅' : '❌' }}
+        </div>
+        <h3 [class.correct]="isCorrect" [class.incorrect]="!isCorrect">
+          {{ isCorrect ? 'Correct!' : 'Incorrect!' }}
+        </h3>
+      </div>
+      
+      <div class="result-content">
+        <div class="your-answer">
+          <strong>Your Answer:</strong> 
+          <span [class.correct]="isCorrect" [class.incorrect]="!isCorrect">
+            {{ currentQuestion.options[selectedAnswer!] }}
+          </span>
+        </div>
+        
+        <div class="correct-answer" *ngIf="!isCorrect">
+          <strong>Correct Answer:</strong> 
+          <span class="correct">{{ currentQuestion.options[currentQuestion.correctAnswer] }}</span>
+        </div>
+        
+        <div class="explanation">
+          <h4>Explanation:</h4>
+          <p>{{ currentQuestion.explanation }}</p>
+        </div>
+        
+        <div class="suitable-crops-info" *ngIf="suitableCrops.length > 0">
+          <h4>Perfect Matches for {{ selectedArea?.name }}:</h4>
+          <div class="crops-showcase">
+            <div *ngFor="let crop of suitableCrops" class="crop-showcase">
+              <div class="crop-icon">{{ crop.image }}</div>
+              <div class="crop-details">
+                <div class="crop-name">{{ crop.name }}</div>
+                <div class="crop-specs">
+                  <small>{{ crop.minTemperature }}°C to {{ crop.maxTemperature }}°C</small>
+                  <small>{{ crop.soilRequirement }} soil</small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="result-actions">
+          <button class="retry-btn" (click)="resetQuiz()">Try Again</button>
+          <button class="back-btn" (click)="onBackToFarming()">Back to Farm</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

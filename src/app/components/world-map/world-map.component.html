@@ -1,0 +1,87 @@
+<div class="world-map-container">
+  <div class="map-header">
+    <h3>🌍 Your Location on Earth!</h3>
+    <p>📍 {{ locationName }} ({{ getContinentName() }})</p>
+    <p>{{ getSimpleClimate() }}</p>
+  </div>
+
+  <div class="world-map">
+    <!-- Simple SVG World Map for Children -->
+    <svg viewBox="0 0 800 400" class="map-svg">
+      <!-- Ocean Background -->
+      <rect width="800" height="400" fill="#4FC3F7" class="ocean"/>
+      
+      <!-- Continents (Simplified shapes for children) -->
+      <!-- North America -->
+      <path d="M50 80 Q120 60 180 80 L200 140 Q160 160 100 140 Z" fill="#81C784" class="continent north-america"/>
+      
+      <!-- South America -->
+      <path d="M160 200 Q200 180 220 220 L240 320 Q200 340 180 300 L160 260 Z" fill="#A5D6A7" class="continent south-america"/>
+      
+      <!-- Europe -->
+      <path d="M350 70 Q400 60 430 80 L440 120 Q390 130 360 110 Z" fill="#C8E6C9" class="continent europe"/>
+      
+      <!-- Africa -->
+      <path d="M380 140 Q420 130 450 160 L460 280 Q420 300 390 270 L380 200 Z" fill="#DCEDC8" class="continent africa"/>
+      
+      <!-- Asia -->
+      <path d="M480 60 Q600 40 700 80 L720 180 Q640 200 520 160 L480 100 Z" fill="#E8F5E8" class="continent asia"/>
+      
+      <!-- Australia -->
+      <path d="M580 280 Q640 270 680 290 L690 320 Q650 330 590 310 Z" fill="#F1F8E9" class="continent australia"/>
+      
+      <!-- Greenland -->
+      <path d="M280 20 Q320 10 340 40 L330 70 Q300 60 280 50 Z" fill="#E0E0E0" class="continent greenland"/>
+      
+      <!-- Grid lines for reference (optional) -->
+      <g class="grid-lines" opacity="0.2">
+        <line x1="0" y1="200" x2="800" y2="200" stroke="#fff" stroke-width="1" stroke-dasharray="5,5"/>
+        <line x1="400" y1="0" x2="400" y2="400" stroke="#fff" stroke-width="1" stroke-dasharray="5,5"/>
+      </g>
+      
+      <!-- Location Pin -->
+      <g *ngIf="showPin" class="location-pin" 
+         [attr.transform]="'translate(' + (pinX * 8) + ',' + (pinY * 4) + ')'">
+        <!-- Pin shadow -->
+        <ellipse cx="2" cy="25" rx="8" ry="3" fill="rgba(0,0,0,0.3)"/>
+        <!-- Pin -->
+        <path d="M0 0 L0 20 L10 20 L5 25 Z" fill="#FF5722" class="pin-body"/>
+        <!-- Pin head -->
+        <circle cx="5" cy="5" r="5" fill="#D32F2F" class="pin-head"/>
+        <!-- Pin highlight -->
+        <circle cx="3" cy="3" r="2" fill="#FFCDD2" class="pin-highlight"/>
+      </g>
+    </svg>
+  </div>
+
+  <div class="location-info">
+    <div class="coordinates">
+      <span class="coord-label">🧭 Coordinates:</span>
+      <span class="coord-value">{{ latitude.toFixed(2) }}°, {{ longitude.toFixed(2) }}°</span>
+    </div>
+    
+    <div class="fun-facts">
+      <div class="fact" *ngIf="getContinentName() === 'Africa'">
+        🦁 Africa is home to lions, elephants, and the Sahara Desert!
+      </div>
+      <div class="fact" *ngIf="getContinentName() === 'Asia'">
+        🐼 Asia is the largest continent with pandas and Mount Everest!
+      </div>
+      <div class="fact" *ngIf="getContinentName() === 'North America'">
+        🦅 North America has bald eagles and the Grand Canyon!
+      </div>
+      <div class="fact" *ngIf="getContinentName() === 'South America'">
+        🦜 South America has colorful parrots and the Amazon rainforest!
+      </div>
+      <div class="fact" *ngIf="getContinentName() === 'Europe'">
+        🏰 Europe has ancient castles and many different countries!
+      </div>
+      <div class="fact" *ngIf="getContinentName() === 'Australia'">
+        🦘 Australia has kangaroos and is surrounded by ocean!
+      </div>
+      <div class="fact" *ngIf="getContinentName() === 'Ocean'">
+        🐋 The oceans are home to whales, dolphins, and colorful fish!
+      </div>
+    </div>
+  </div>
+</div>

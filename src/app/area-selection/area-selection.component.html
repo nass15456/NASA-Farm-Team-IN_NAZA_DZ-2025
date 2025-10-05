@@ -1,0 +1,41 @@
+<div class="area-selection-container">
+  <div class="mars-map">
+    <div class="map-background">
+      <!-- Mars map background -->
+      <div 
+        *ngFor="let area of earthAreas" 
+        class="area-marker"
+        [style.left.%]="area.coordinates.x"
+        [style.top.%]="area.coordinates.y"
+        (click)="selectArea(area)"
+        [title]="area.name">
+        <div class="marker-pulse"></div>
+        <div class="marker-icon">📍</div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="area-list">
+    <h3>Available Regions</h3>
+    <div class="area-cards">
+      <div 
+        *ngFor="let area of earthAreas" 
+        class="area-card"
+        (click)="selectArea(area)">
+        <h4>{{ area.name }}</h4>
+        <div class="area-stats">
+          <div class="stat">
+            <span class="icon">🌡️</span>
+            <span class="value">{{ area.temperature }}°C</span>
+          </div>
+          <div class="stat">
+            <span class="icon">🌍</span>
+            <span class="value">{{ area.soilType }} Soil</span>
+          </div>
+        </div>
+        <p class="description">{{ area.description }}</p>
+        <button class="select-btn">Select Area</button>
+      </div>
+    </div>
+  </div>
+</div>

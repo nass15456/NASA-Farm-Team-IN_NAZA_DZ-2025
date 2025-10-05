@@ -1,0 +1,19 @@
+meta {
+  name: get_lst_data_with_statistics GET
+  type: http
+  seq: 5
+}
+
+get {
+  url: http://localhost:3001/rpc/get_lst_data_with_statistics
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "target_latitude": 22.79, 
+    "target_longitudsse": 5.53,
+    "band_filter": "LST_Day_1km"
+  }
+}

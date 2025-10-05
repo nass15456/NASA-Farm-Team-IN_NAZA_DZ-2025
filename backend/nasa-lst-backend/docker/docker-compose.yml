@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: nasa_postgres
+    environment:
+      POSTGRES_DB: nasa_lst_db
+      POSTGRES_USER: nasa_user
+      POSTGRES_PASSWORD: nasa_password
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - nasa_network
+
+  postgrest:
+    image: postgrest/postgrest:v11.2.0
+    container_name: nasa_postgrest
+    ports:
+      - "3001:3000"
+    environment:
+      PGRST_DB_URI: postgres://nasa_user:nasa_password@postgres:5432/nasa_lst_db
+      PGRST_OPENAPI_SERVER_PROXY_URI: http://localhost:3001
+      PGRST_DB_SCHEMAS: public
+      PGRST_DB_ANON_ROLE: nasa_user
+    depends_on:
+      - postgres
+    networks:
+      - nasa_network
+
+  backend:
+    build: 
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: nasa_backend
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://nasa_user:nasa_password@postgres:5432/nasa_lst_db
+      POSTGREST_URL: http://postgrest:3000
+    depends_on:
+      - postgres
+      - postgrest
+    networks:
+      - nasa_network
+    volumes:
+      - .:/app
+    command: npm start
+
+volumes:
+  postgres_data:
+
+networks:
+  nasa_network:
+    driver: bridge

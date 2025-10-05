@@ -1,0 +1,20 @@
+<div class="mars-container" (click)="onPlanetClick()">
+  <div class="mars-planet" [class.spinning]="isSpinning">
+    <div class="mars-surface">
+      <!-- Earth surface features -->
+      <div class="continent continent-1"></div>
+      <div class="continent continent-2"></div>
+      <div class="continent continent-3"></div>
+      <div class="ice-cap ice-north"></div>
+      <div class="ice-cap ice-south"></div>
+      <div class="cloud-system"></div>
+    </div>
+    <div class="mars-glow"></div>
+  </div>
+  <div class="click-hint" *ngIf="!isSpinning && !isLoadingData">
+    <p>Click on Earth to explore!</p>
+  </div>
+  <div class="loading-hint" *ngIf="isLoadingData">
+    <p>🛰️ Fetching satellite data...</p>
+  </div>
+</div>

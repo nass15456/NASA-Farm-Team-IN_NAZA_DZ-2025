@@ -1,0 +1,124 @@
+<div class="farming-container">
+  <!-- Climate Information Header -->
+  <div class="climate-header" *ngIf="currentLocationData && selectedArea">
+    <div class="location-info">
+      <h2>🌍 {{ selectedArea.name }}</h2>
+      <div class="location-coords" *ngIf="selectedArea.realData">
+        📍 {{ selectedArea.latitude?.toFixed(4) }}°, {{ selectedArea.longitude?.toFixed(4) }}°
+      </div>
+    </div>
+    
+    <div class="temperature-info">
+      <div class="temp-display">
+        <span class="temp-day">☀️ Day: {{ selectedArea.dayTemperature }}°C</span>
+        <span class="temp-night">🌙 Night: {{ selectedArea.nightTemperature }}°C</span>
+        <span class="temp-avg">📊 Average: {{ selectedArea.temperature }}°C</span>
+      </div>
+    </div>
+    
+    <div class="map-links" *ngIf="currentLocationData.mapData">
+      <a [href]="getMapLink('google')" target="_blank" class="map-link" *ngIf="getMapLink('google')">
+        🗺️ Google Maps
+      </a>
+      <a [href]="getMapLink('osm')" target="_blank" class="map-link" *ngIf="getMapLink('osm')">
+        🌐 OpenStreetMap
+      </a>
+    </div>
+    
+    <div class="data-source" *ngIf="selectedArea.realData">
+      <small>📡 Real NASA Climate Data</small>
+    </div>
+  </div>
+
+  <div class="farming-interface">
+    <!-- Crop Selection Panel -->
+    <div class="crop-panel">
+      <h3>Available Crops</h3>
+      <div class="crop-legend">
+        <span class="legend-item suitable">✅ Suitable for this area</span>
+        <span class="legend-item unsuitable">❌ Not suitable</span>
+      </div>
+      
+      <div class="crop-list">
+        <div 
+          *ngFor="let crop of availableCrops"
+          class="crop-item"
+          [class.suitable]="isCropSuitable(crop)"
+          [class.unsuitable]="!isCropSuitable(crop)"
+          draggable="true"
+          (dragstart)="onDragStart($event, crop)">
+          
+          <div class="crop-icon">{{ crop.image }}</div>
+          <div class="crop-info">
+            <div class="crop-name">{{ crop.name }}</div>
+            <div class="crop-type">{{ crop.type }}</div>
+            <div class="crop-requirements">
+              <small>{{ crop.minTemperature }}°C to {{ crop.maxTemperature }}°C</small>
+              <small>{{ crop.soilRequirement }} soil</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Farm Area -->
+    <div class="farm-area">
+      <h3>Earth Farm Plot</h3>
+      <div class="farm-grid">
+        <div 
+          *ngFor="let plot of farmPlots; let i = index"
+          class="farm-plot"
+          [class.occupied]="plot !== null"
+          (dragover)="onDragOver($event)"
+          (drop)="onDrop($event, i)">
+          
+          <div *ngIf="plot" class="planted-crop">
+            <div class="crop-display">
+              <div class="crop-icon-large">{{ plot.image }}</div>
+              <div class="crop-name-small">{{ plot.name }}</div>
+            </div>
+            <button class="clear-btn" (click)="clearPlot(i)">×</button>
+          </div>
+          
+          <div *ngIf="!plot" class="empty-plot">
+            <span class="drop-hint">Drop crop here</span>
+          </div>
+        </div>
+      </div>
+      
+      <div class="farm-actions">
+        <button class="back-button" (click)="onBackToPlanet()">
+          ← Back to Earth
+        </button>
+        <button class="quiz-button" (click)="onStartQuiz()">
+          Test Your Knowledge! 🧠
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Area Information Panel -->
+  <div class="info-panel" *ngIf="selectedArea">
+    <h3>{{ selectedArea.name }} Conditions</h3>
+    <div class="condition-item">
+      <span class="condition-label">Temperature:</span>
+      <span class="condition-value temp">{{ selectedArea.temperature }}°C</span>
+    </div>
+    <div class="condition-item">
+      <span class="condition-label">Soil Type:</span>
+      <span class="condition-value soil">{{ selectedArea.soilType }}</span>
+    </div>
+    <div class="condition-description">
+      <p>{{ selectedArea.description }}</p>
+    </div>
+    
+    <div class="suitable-crops" *ngIf="suitableCrops.length > 0">
+      <h4>Recommended Crops:</h4>
+      <div class="recommended-list">
+        <span *ngFor="let crop of suitableCrops" class="recommended-crop">
+          {{ crop.image }} {{ crop.name }}
+        </span>
+      </div>
+    </div>
+  </div>
+</div>

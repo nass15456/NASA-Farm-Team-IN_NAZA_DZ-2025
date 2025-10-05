@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "nasa_green_god_willing",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}
