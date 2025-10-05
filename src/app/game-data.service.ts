@@ -139,6 +139,168 @@ export class GameDataService {
       soilRequirement: 'Clay-rich',
       image: '🌾',
       description: 'Traditional wheat variety perfect for European plains.'
+    },
+    // Additional Fruits
+    {
+      id: 7,
+      name: 'Tropical Mango',
+      type: 'fruit',
+      minTemperature: 25,
+      maxTemperature: 40,
+      soilRequirement: 'Volcanic',
+      image: '🥭',
+      description: 'Exotic mango variety that thrives in hot volcanic soils.'
+    },
+    {
+      id: 8,
+      name: 'Arctic Blueberry',
+      type: 'fruit',
+      minTemperature: -10,
+      maxTemperature: 15,
+      soilRequirement: 'Rocky',
+      image: '🫐',
+      description: 'Cold-hardy blueberry perfect for northern rocky terrains.'
+    },
+    {
+      id: 9,
+      name: 'Mediterranean Orange',
+      type: 'fruit',
+      minTemperature: 10,
+      maxTemperature: 28,
+      soilRequirement: 'Clay-rich',
+      image: '🍊',
+      description: 'Citrus fruit that loves Mediterranean clay-rich soils.'
+    },
+    {
+      id: 10,
+      name: 'Desert Apple',
+      type: 'fruit',
+      minTemperature: 5,
+      maxTemperature: 25,
+      soilRequirement: 'Sandy',
+      image: '🍎',
+      description: 'Drought-resistant apple variety adapted to sandy desert edges.'
+    },
+    {
+      id: 11,
+      name: 'Tropical Pineapple',
+      type: 'fruit',
+      minTemperature: 22,
+      maxTemperature: 35,
+      soilRequirement: 'Volcanic',
+      image: '🍍',
+      description: 'Sweet pineapple that requires warm volcanic soil conditions.'
+    },
+    {
+      id: 12,
+      name: 'Mountain Cherry',
+      type: 'fruit',
+      minTemperature: 0,
+      maxTemperature: 20,
+      soilRequirement: 'Rocky',
+      image: '🍒',
+      description: 'Hardy cherry tree that grows well in rocky mountain slopes.'
+    },
+    {
+      id: 13,
+      name: 'Coastal Grape',
+      type: 'fruit',
+      minTemperature: 8,
+      maxTemperature: 26,
+      soilRequirement: 'Sandy',
+      image: '🍇',
+      description: 'Wine grape variety that thrives in coastal sandy soils.'
+    },
+    {
+      id: 14,
+      name: 'Tropical Banana',
+      type: 'fruit',
+      minTemperature: 20,
+      maxTemperature: 35,
+      soilRequirement: 'Clay-rich',
+      image: '🍌',
+      description: 'Classic banana that needs warm temperatures and rich soil.'
+    },
+    // Additional Legumes
+    {
+      id: 15,
+      name: 'Mediterranean Chickpea',
+      type: 'legume',
+      minTemperature: 12,
+      maxTemperature: 30,
+      soilRequirement: 'Sandy',
+      image: '🫛',
+      description: 'Protein-rich chickpea perfect for Mediterranean sandy soils.'
+    },
+    {
+      id: 16,
+      name: 'Northern Lentils',
+      type: 'legume',
+      minTemperature: -2,
+      maxTemperature: 22,
+      soilRequirement: 'Clay-rich',
+      image: '🌱',
+      description: 'Cold-tolerant lentils that enrich clay soils with nitrogen.'
+    },
+    {
+      id: 17,
+      name: 'Tropical Black Beans',
+      type: 'legume',
+      minTemperature: 18,
+      maxTemperature: 32,
+      soilRequirement: 'Volcanic',
+      image: '🫘',
+      description: 'Nutritious black beans that love warm volcanic soil conditions.'
+    },
+    {
+      id: 18,
+      name: 'Desert Peas',
+      type: 'legume',
+      minTemperature: 8,
+      maxTemperature: 28,
+      soilRequirement: 'Sandy',
+      image: '🟢',
+      description: 'Drought-resistant peas adapted to arid sandy environments.'
+    },
+    {
+      id: 19,
+      name: 'Mountain Soybeans',
+      type: 'legume',
+      minTemperature: 5,
+      maxTemperature: 25,
+      soilRequirement: 'Rocky',
+      image: '🫛',
+      description: 'Hardy soybean variety that can grow in rocky mountain soil.'
+    },
+    {
+      id: 20,
+      name: 'Coastal Lima Beans',
+      type: 'legume',
+      minTemperature: 15,
+      maxTemperature: 30,
+      soilRequirement: 'Sandy',
+      image: '🫘',
+      description: 'Large lima beans that thrive in warm coastal sandy areas.'
+    },
+    {
+      id: 21,
+      name: 'Alpine Fava Beans',
+      type: 'legume',
+      minTemperature: -5,
+      maxTemperature: 18,
+      soilRequirement: 'Rocky',
+      image: '🫛',
+      description: 'Cold-hardy fava beans perfect for high-altitude rocky terrain.'
+    },
+    {
+      id: 22,
+      name: 'Tropical Peanuts',
+      type: 'legume',
+      minTemperature: 20,
+      maxTemperature: 35,
+      soilRequirement: 'Clay-rich',
+      image: '🥜',
+      description: 'Ground nuts that require warm temperatures and rich clay soil.'
     }
   ];
 
