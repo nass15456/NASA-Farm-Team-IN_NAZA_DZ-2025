@@ -1,4 +1,11 @@
 <div class="area-selection-container">
+  <div class="back-to-earth-container">
+    <button class="back-to-earth-btn" (click)="goBackToEarth()">
+      <span class="back-icon">🌍</span>
+      <span class="back-text">Back to Earth</span>
+    </button>
+  </div>
+  
   <div class="nasa-data-info" *ngIf="availableAreas.length > 0">
     <h3>🛰️ NASA Climate Database Locations</h3>
     <p>Real satellite temperature data from around the world</p>

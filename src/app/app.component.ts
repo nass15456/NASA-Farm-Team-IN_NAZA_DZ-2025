@@ -135,6 +135,13 @@ export class AppComponent implements OnInit {
     this.currentScreen = 'area-selection';
   }
 
+  onBackToEarth() {
+    console.log('🌍 Navigating back to Earth planet view');
+    this.currentScreen = 'planet';
+    // Optionally clear the available areas to free memory
+    this.availableAreas = [];
+  }
+
   /**
    * Sanitize map URL for iframe src
    */
