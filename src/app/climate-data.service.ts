@@ -336,9 +336,9 @@ export class ClimateDataService {
     const geocodeObservables = locations.map((location, index) => {
       return this.reverseGeocode(location.latitude, location.longitude).pipe(
         map(geocodeResult => {
-          const climateZone = this.getClimateZone(location.latitude);
+          const climateZone = this.getClimateZone(location.latitude, location.longitude);
           
-          console.log(`🏷️ Creating area ${index + 1}: ${geocodeResult.fullName} (${geocodeResult.source}) at ${location.latitude},${location.longitude}`);
+          console.log(`🏷️ Creating area ${index + 1}: ${geocodeResult.fullName} (${geocodeResult.source}) at ${location.latitude},${location.longitude} - Climate: ${climateZone}`);
           
           return {
             id: index + 1,
@@ -355,7 +355,7 @@ export class ClimateDataService {
         catchError(error => {
           console.warn(`⚠️ Geocoding failed for ${location.latitude},${location.longitude}, using fallback`);
           const fallbackName = this.getLocationName(location.latitude, location.longitude);
-          const climateZone = this.getClimateZone(location.latitude);
+          const climateZone = this.getClimateZone(location.latitude, location.longitude);
           
           return of({
             id: index + 1,
@@ -653,7 +653,7 @@ export class ClimateDataService {
       ]).then(([tempData, geocodeResult]) => {
         const { dayTemp, nightTemp, avgTemp } = tempData!;
         const locationName = geocodeResult!.fullName;
-        const climateZone = this.getClimateZone(latitude);
+        const climateZone = this.getClimateZone(latitude, longitude);
         
         // Log real temperatures and geocoding result
         console.log(`🌡️ Real temps for ${locationName} (${geocodeResult!.source}): Day ${dayTemp}°C, Night ${nightTemp}°C (Climate: ${climateZone})`);
@@ -702,7 +702,7 @@ export class ClimateDataService {
     return this.getRealDayNightTemperatures(latitude, longitude).pipe(
       map(({dayTemp, nightTemp, avgTemp}) => {
         const locationName = this.getLocationName(latitude, longitude);
-        const climateZone = this.getClimateZone(latitude);
+        const climateZone = this.getClimateZone(latitude, longitude);
         
         console.log(`🌡️ Fallback temps for ${locationName}: Day ${dayTemp}°C, Night ${nightTemp}°C (Climate: ${climateZone})`);
         
@@ -763,7 +763,7 @@ export class ClimateDataService {
     return this.getDayNightTemperatures(latitude, longitude).pipe(
       map(({dayTemp, nightTemp, avgTemp}) => {
         const locationName = this.getLocationName(latitude, longitude);
-        const climateZone = this.getClimateZone(latitude);
+        const climateZone = this.getClimateZone(latitude, longitude);
         
         const locationData: LocationData = {
           latitude,
@@ -913,9 +913,9 @@ export class ClimateDataService {
   }
 
   /**
-   * Process database record into LocationData (legacy method - now uses improved temperature calculation)
+   * Process database record into LocationData (now uses real NASA temperature variation data)
    */
-  private processLocationData(record: any): LocationData {
+  private processLocationData(record: any): Observable<LocationData> {
     const latitude = record.latitude;
     const longitude = record.longitude;
     
@@ -928,52 +928,148 @@ export class ClimateDataService {
     }
 
     const locationName = this.getLocationName(latitude, longitude);
-    const climateZone = this.getClimateZone(latitude);
+    const climateZone = this.getClimateZone(latitude, longitude);
     
-    // Estimate day/night temperatures based on average and climate zone
-    const tempVariation = this.getTemperatureVariation(climateZone);
-    const dayTemp = Math.round(avgTemperature + tempVariation);
-    const nightTemp = Math.round(avgTemperature - tempVariation);
-    
-    const locationData: LocationData = {
-      latitude,
-      longitude,
-      dayTemp,
-      nightTemp,
-      locationName,
-      isRevealed: false, // Start hidden for guessing game
-      area: {
-        id: Math.floor(Math.random() * 1000),
-        name: locationName,
-        latitude,
-        longitude,
-        dayTemperature: dayTemp,
-        nightTemperature: nightTemp,
-        soilType: this.getSoilType(latitude, longitude),
-        description: this.getAreaDescription(locationName, avgTemperature, climateZone),
-        climateZone
-      }
-    };
+    // Use real NASA data for temperature variation
+    return this.getTemperatureVariation(latitude, longitude).pipe(
+      map(tempVariation => {
+        const dayTemp = Math.round(avgTemperature + tempVariation);
+        const nightTemp = Math.round(avgTemperature - tempVariation);
+        
+        const locationData: LocationData = {
+          latitude,
+          longitude,
+          dayTemp,
+          nightTemp,
+          locationName,
+          isRevealed: false, // Start hidden for guessing game
+          area: {
+            id: Math.floor(Math.random() * 1000),
+            name: locationName,
+            latitude,
+            longitude,
+            dayTemperature: dayTemp,
+            nightTemperature: nightTemp,
+            soilType: this.getSoilType(latitude, longitude),
+            description: this.getAreaDescription(locationName, avgTemperature, climateZone),
+            climateZone
+          }
+        };
 
-    // Add map data
-    locationData.mapData = this.getLocationMapData(locationData);
-    
-    return locationData;
+        // Add map data
+        locationData.mapData = this.getLocationMapData(locationData);
+        
+        console.log(`🔧 Legacy method now uses real NASA variation: ${tempVariation}°C for ${locationName}`);
+        
+        return locationData;
+      })
+    );
   }
 
   /**
-   * Get temperature variation based on climate zone
+   * Get temperature variation based on climate zone (synchronous fallback)
    */
-  private getTemperatureVariation(climateZone: string): number {
+  private getTemperatureVariationSync(climateZone: string): number {
     const variationMap: {[key: string]: number} = {
-      'Tropical': 5,      // Less day/night variation
-      'Subtropical': 7,   // Moderate variation
-      'Temperate': 10,    // Standard variation
-      'Continental': 15,  // High variation
-      'Polar': 8          // Lower variation due to extreme cold
+      'Tropical': 5,              // Less day/night variation
+      'Tropical Rainforest': 4,   // Very stable temperatures
+      'Tropical Monsoon': 6,      // Moderate seasonal variation
+      'Subtropical': 7,           // Moderate variation
+      'Temperate': 10,            // Standard variation
+      'Mediterranean': 8,         // Moderate variation
+      'Continental': 15,          // High variation
+      'Steppe': 12,              // High variation due to continental effect
+      'Arid Desert': 20,         // Very high day/night variation
+      'Cold Desert': 18,         // High variation but less than hot desert
+      'Semi-Arid': 14,           // High variation
+      'Subarctic': 12,           // Moderate to high variation
+      'Tundra': 8,               // Lower variation due to extreme cold
+      'Polar': 6                 // Lower variation due to extreme cold
     };
     
     return variationMap[climateZone] || 10;
+  }
+
+  /**
+   * Get temperature variation based on real NASA data for specific coordinates
+   */
+  private getTemperatureVariation(latitude: number, longitude: number): Observable<number> {
+    // Query both day and night temperature data to calculate real variation
+    const dayStats$ = this.http.get<any>(`${this.POSTGREST_URL}/lst_statistics?latitude=eq.${latitude}&longitude=eq.${longitude}&band=eq.LST_Day_1km&limit=10`);
+    const nightStats$ = this.http.get<any>(`${this.POSTGREST_URL}/lst_statistics?latitude=eq.${latitude}&longitude=eq.${longitude}&band=eq.LST_Night_1km&limit=10`);
+
+    return new Observable(observer => {
+      Promise.all([
+        dayStats$.pipe(catchError(() => of([]))).toPromise(),
+        nightStats$.pipe(catchError(() => of([]))).toPromise()
+      ]).then(([dayStatsData, nightStatsData]) => {
+        let variation = 10; // Default fallback
+
+        if (dayStatsData && dayStatsData.length > 0 && nightStatsData && nightStatsData.length > 0) {
+          // Calculate average day temperature from NASA data
+          const dayTemps = dayStatsData
+            .filter((record: any) => record.value_mean && !isNaN(record.value_mean))
+            .map((record: any) => this.kelvinToCelsius(record.value_mean));
+
+          // Calculate average night temperature from NASA data
+          const nightTemps = nightStatsData
+            .filter((record: any) => record.value_mean && !isNaN(record.value_mean))
+            .map((record: any) => this.kelvinToCelsius(record.value_mean));
+
+          if (dayTemps.length > 0 && nightTemps.length > 0) {
+            const avgDayTemp = dayTemps.reduce((sum: number, temp: number) => sum + temp, 0) / dayTemps.length;
+            const avgNightTemp = nightTemps.reduce((sum: number, temp: number) => sum + temp, 0) / nightTemps.length;
+            
+            // Real temperature variation from NASA data
+            variation = Math.abs(avgDayTemp - avgNightTemp) / 2;
+            
+            // Ensure reasonable bounds (minimum 2°C, maximum 20°C variation)
+            variation = Math.max(2, Math.min(20, variation));
+            
+            console.log(`🌡️ Real NASA variation for ${latitude},${longitude}: ${variation.toFixed(1)}°C (Day: ${avgDayTemp.toFixed(1)}°C, Night: ${avgNightTemp.toFixed(1)}°C)`);
+          }
+        }
+
+        // If no data available, use climate zone as fallback
+        if (variation === 10) {
+          const climateZone = this.getClimateZone(latitude, longitude);
+          const fallbackMap: {[key: string]: number} = {
+            'Tropical': 5,              // Less day/night variation
+            'Tropical Rainforest': 4,   // Very stable temperatures
+            'Tropical Monsoon': 6,      // Moderate seasonal variation
+            'Subtropical': 7,           // Moderate variation
+            'Temperate': 10,            // Standard variation
+            'Mediterranean': 8,         // Moderate variation
+            'Continental': 15,          // High variation
+            'Steppe': 12,              // High variation due to continental effect
+            'Arid Desert': 20,         // Very high day/night variation
+            'Cold Desert': 18,         // High variation but less than hot desert
+            'Semi-Arid': 14,           // High variation
+            'Subarctic': 12,           // Moderate to high variation
+            'Tundra': 8,               // Lower variation due to extreme cold
+            'Polar': 6                 // Lower variation due to extreme cold
+          };
+          variation = fallbackMap[climateZone] || 10;
+          console.log(`⚠️ No NASA data for variation, using climate zone fallback: ${variation}°C (${climateZone})`);
+        }
+
+        observer.next(Math.round(variation));
+        observer.complete();
+      }).catch(error => {
+        console.error('❌ Error calculating temperature variation:', error);
+        // Ultimate fallback based on latitude and longitude
+        const climateZone = this.getClimateZone(latitude, longitude);
+        const fallbackMap: {[key: string]: number} = {
+          'Tropical': 5, 'Tropical Rainforest': 4, 'Tropical Monsoon': 6,
+          'Subtropical': 7, 'Mediterranean': 8, 'Temperate': 10, 
+          'Continental': 15, 'Steppe': 12, 'Arid Desert': 20, 
+          'Cold Desert': 18, 'Semi-Arid': 14, 'Subarctic': 12, 
+          'Tundra': 8, 'Polar': 6
+        };
+        observer.next(fallbackMap[climateZone] || 10);
+        observer.complete();
+      });
+    });
   }
 
   /**
@@ -1376,15 +1472,88 @@ export class ClimateDataService {
   }
 
   /**
-   * Determine climate zone based on latitude
+   * Determine climate zone based on latitude and longitude (considering geographic regions)
    */
-  private getClimateZone(latitude: number): string {
+  private getClimateZone(latitude: number, longitude?: number): string {
     const absLat = Math.abs(latitude);
-    if (absLat < 23.5) return 'Tropical';
-    if (absLat < 35) return 'Subtropical';
-    if (absLat < 50) return 'Temperate';
-    if (absLat < 66.5) return 'Continental';
-    return 'Polar';
+    
+    // If longitude is provided, use geographic-specific climate classification
+    if (longitude !== undefined) {
+      // Sahara Desert (North Africa) - includes Tamanrasset, Algeria
+      if (latitude >= 15 && latitude <= 35 && longitude >= -17 && longitude <= 35) {
+        return 'Arid Desert';
+      }
+      
+      // Arabian Desert (Middle East)
+      if (latitude >= 15 && latitude <= 35 && longitude >= 35 && longitude <= 60) {
+        return 'Arid Desert';
+      }
+      
+      // Gobi Desert (Central Asia)
+      if (latitude >= 38 && latitude <= 50 && longitude >= 90 && longitude <= 120) {
+        return 'Cold Desert';
+      }
+      
+      // Atacama Desert (South America)
+      if (latitude >= -30 && latitude <= -15 && longitude >= -75 && longitude <= -65) {
+        return 'Arid Desert';
+      }
+      
+      // Kalahari Desert (Southern Africa)
+      if (latitude >= -30 && latitude <= -20 && longitude >= 15 && longitude <= 30) {
+        return 'Semi-Arid';
+      }
+      
+      // Australian Outback
+      if (latitude >= -35 && latitude <= -15 && longitude >= 115 && longitude <= 150) {
+        return 'Arid Desert';
+      }
+      
+      // Mediterranean Climate Zones
+      if ((latitude >= 30 && latitude <= 45 && longitude >= -10 && longitude <= 45) || // Mediterranean Basin
+          (latitude >= 30 && latitude <= 40 && longitude >= -125 && longitude <= -115) || // California
+          (latitude >= -40 && latitude <= -30 && longitude >= -75 && longitude <= -65) || // Chile
+          (latitude >= -35 && latitude <= -30 && longitude >= 115 && longitude <= 125) || // SW Australia
+          (latitude >= -35 && latitude <= -30 && longitude >= 18 && longitude <= 25)) { // South Africa
+        return 'Mediterranean';
+      }
+      
+      // Tropical Rainforest (Amazon, Congo, Southeast Asia)
+      if ((latitude >= -10 && latitude <= 10 && longitude >= -80 && longitude <= -35) || // Amazon
+          (latitude >= -5 && latitude <= 10 && longitude >= 10 && longitude <= 30) || // Congo Basin
+          (latitude >= -10 && latitude <= 15 && longitude >= 95 && longitude <= 155)) { // SE Asia/Indonesia
+        return 'Tropical Rainforest';
+      }
+      
+      // Monsoon Climate (Indian Subcontinent, Southeast Asia)
+      if (latitude >= 8 && latitude <= 30 && longitude >= 68 && longitude <= 100) {
+        return 'Tropical Monsoon';
+      }
+      
+      // Steppe/Prairie (Great Plains, Eurasian Steppe)
+      if ((latitude >= 30 && latitude <= 50 && longitude >= -110 && longitude <= -95) || // Great Plains
+          (latitude >= 45 && latitude <= 55 && longitude >= 20 && longitude <= 120)) { // Eurasian Steppe
+        return 'Steppe';
+      }
+      
+      // Tundra (Northern Canada, Siberia)
+      if (latitude >= 60 && (longitude >= -170 && longitude <= -50 || longitude >= 40 && longitude <= 180)) {
+        return 'Tundra';
+      }
+      
+      // Subarctic (Taiga/Boreal Forest)
+      if (latitude >= 50 && latitude <= 70 && (longitude >= -170 && longitude <= -50 || longitude >= 20 && longitude <= 180)) {
+        return 'Subarctic';
+      }
+    }
+    
+    // Fallback to latitude-based classification with improved boundaries
+    if (absLat >= 66.5) return 'Polar';
+    if (absLat >= 60) return 'Subarctic';
+    if (absLat >= 50) return 'Continental';
+    if (absLat >= 35) return 'Temperate';
+    if (absLat >= 23.5) return 'Subtropical';
+    return 'Tropical';
   }
 
   /**
@@ -1423,9 +1592,18 @@ export class ClimateDataService {
   private getClimateDescription(climate: string): string {
     const descriptions: {[key: string]: string} = {
       'Tropical': 'offers year-round growing seasons with high biodiversity potential',
+      'Tropical Rainforest': 'provides ideal conditions for diverse tropical crops with abundant rainfall',
+      'Tropical Monsoon': 'features distinct wet and dry seasons perfect for rice and monsoon crops',
       'Subtropical': 'provides excellent conditions for diverse crop cultivation',
+      'Mediterranean': 'offers perfect conditions for olives, grapes, and citrus fruits',
       'Temperate': 'features seasonal variations ideal for traditional agriculture',
       'Continental': 'experiences distinct seasons suitable for grain production',
+      'Steppe': 'supports grassland agriculture and grazing with moderate rainfall',
+      'Arid Desert': 'requires advanced irrigation and specialized desert agriculture techniques',
+      'Cold Desert': 'demands specialized cold-climate and drought-resistant cultivation methods',
+      'Semi-Arid': 'supports drought-resistant crops with careful water management',
+      'Subarctic': 'allows short-season crops adapted to cool summers',
+      'Tundra': 'requires greenhouse cultivation and cold-adapted techniques',
       'Polar': 'requires specialized techniques for short-season cultivation'
     };
     
@@ -1548,7 +1726,7 @@ export class ClimateDataService {
     
     const location = fallbackLocations[Math.floor(Math.random() * fallbackLocations.length)];
     const locationName = this.getLocationName(location.lat, location.lon);
-    const climateZone = this.getClimateZone(location.lat);
+    const climateZone = this.getClimateZone(location.lat, location.lon);
     
     const locationData: LocationData = {
       latitude: location.lat,
