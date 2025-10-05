@@ -14,6 +14,7 @@ export class AppComponent implements OnInit {
   selectedArea: EarthAreaExtended | null = null;
   isLoading = true;
   isLoadingData = false;
+  loadingMessage = '';
   currentLocationData: LocationData | null = null;
   availableAreas: any[] = [];
 
@@ -31,38 +32,46 @@ export class AppComponent implements OnInit {
 
   onPlanetClick() {
     this.isLoadingData = true;
+    this.loadingMessage = 'Loading database contents...';
     
     // First debug the database contents
     this.climateDataService.debugDatabaseContents().subscribe({
       next: (debugData) => {
         console.log('✅ Database debug completed');
+        this.loadingMessage = 'Getting exact city names from coordinates...';
         
-        // Now load available areas for user selection
+        // Now load available areas for user selection with reverse geocoding
         this.climateDataService.getAvailableAreas(30).subscribe({
           next: (areas) => {
             console.log(`🎯 Final areas received: ${areas.length}`);
             this.availableAreas = areas;
             this.currentScreen = 'area-selection';
             this.isLoadingData = false;
+            this.loadingMessage = '';
           },
           error: (error) => {
             console.error('Error loading available areas:', error);
             this.isLoadingData = false;
+            this.loadingMessage = '';
           }
         });
       },
       error: (error) => {
         console.error('Error debugging database:', error);
+        this.loadingMessage = 'Fetching area information...';
+        
         // Still try to load areas even if debug fails
         this.climateDataService.getAvailableAreas(30).subscribe({
           next: (areas) => {
             this.availableAreas = areas;
             this.currentScreen = 'area-selection';
             this.isLoadingData = false;
+            this.loadingMessage = '';
           },
           error: (error) => {
             console.error('Error loading available areas:', error);
             this.isLoadingData = false;
+            this.loadingMessage = '';
           }
         });
       }
