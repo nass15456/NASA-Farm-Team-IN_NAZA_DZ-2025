@@ -44,7 +44,8 @@
       </div>
       <app-area-selection 
         [availableAreas]="availableAreas" 
-        (areaSelected)="onAreaSelected($event)">
+        (areaSelected)="onAreaSelected($event)"
+        (backToEarth)="onBackToEarth()">
       </app-area-selection>
     </div>
 

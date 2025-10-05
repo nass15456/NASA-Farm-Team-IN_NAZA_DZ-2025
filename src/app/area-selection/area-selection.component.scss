@@ -8,6 +8,56 @@
   padding: 1rem;
 }
 
+.back-to-earth-container {
+  align-self: flex-start;
+  margin-bottom: 1rem;
+  
+  .back-to-earth-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: linear-gradient(135deg, #4CAF50, #45a049);
+    color: white;
+    border: none;
+    padding: 0.8rem 1.5rem;
+    border-radius: 25px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+    
+    .back-icon {
+      font-size: 1.2em;
+      animation: rotate 4s linear infinite;
+    }
+    
+    .back-text {
+      font-family: 'Orbitron', sans-serif;
+    }
+    
+    &:hover {
+      background: linear-gradient(135deg, #45a049, #4CAF50);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+    }
+    
+    &:active {
+      transform: translateY(0);
+      box-shadow: 0 3px 10px rgba(76, 175, 80, 0.3);
+    }
+  }
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .nasa-data-info {
   text-align: center;
   margin-bottom: 2rem;
@@ -403,6 +453,20 @@
     padding: 1rem;
   }
   
+  .back-to-earth-container {
+    align-self: center;
+    margin-bottom: 0.5rem;
+    
+    .back-to-earth-btn {
+      padding: 0.7rem 1.2rem;
+      font-size: 0.9rem;
+      
+      .back-icon {
+        font-size: 1rem;
+      }
+    }
+  }
+  
   .mars-map {
     height: 300px;
   }
@@ -418,5 +482,20 @@
   
   .stat {
     justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .back-to-earth-btn {
+    padding: 0.6rem 1rem !important;
+    font-size: 0.8rem !important;
+    
+    .back-text {
+      display: none;
+    }
+    
+    .back-icon {
+      font-size: 1.2rem !important;
+    }
   }
 }

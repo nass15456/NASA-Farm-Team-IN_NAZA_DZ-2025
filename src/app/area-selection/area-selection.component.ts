@@ -9,6 +9,7 @@ import { EarthAreaWithClimate } from '../climate-data.service';
 export class AreaSelectionComponent implements OnInit {
   @Input() availableAreas: EarthAreaWithClimate[] = [];
   @Output() areaSelected = new EventEmitter<EarthAreaWithClimate>();
+  @Output() backToEarth = new EventEmitter<void>();
   
   constructor() {}
 
@@ -20,5 +21,10 @@ export class AreaSelectionComponent implements OnInit {
   selectArea(area: EarthAreaWithClimate) {
     console.log(`🎯 User selected: ${area.name}`);
     this.areaSelected.emit(area);
+  }
+
+  goBackToEarth() {
+    console.log('🌍 Going back to Earth view');
+    this.backToEarth.emit();
   }
 }
