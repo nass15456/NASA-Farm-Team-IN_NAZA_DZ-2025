@@ -39,7 +39,7 @@
         <p>Select an area from our NASA climate database to explore</p>
         <div *ngIf="isLoadingData" class="loading-indicator">
           <div class="spinner-small"></div>
-          <span>Loading areas...</span>
+          <span>{{ loadingMessage || 'Loading areas...' }}</span>
         </div>
       </div>
       <app-area-selection 

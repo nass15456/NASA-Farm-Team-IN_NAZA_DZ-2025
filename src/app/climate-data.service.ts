@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable, map, catchError, of, switchMap } from 'rxjs';
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { Observable, map, catchError, of, switchMap, timeout, retry } from 'rxjs';
 
 export interface ClimateData {
   lst_id: number;
@@ -59,6 +59,14 @@ export interface EarthAreaWithClimate {
   climateZone: string;
 }
 
+export interface ReverseGeocodeResult {
+  city: string;
+  state?: string;
+  country: string;
+  fullName: string;
+  source: 'nominatim' | 'photon' | 'bigdatacloud' | 'fallback';
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -67,6 +75,153 @@ export class ClimateDataService {
   private readonly POSTGREST_URL = 'http://localhost:3001';
 
   constructor(private http: HttpClient) {}
+
+  /**
+   * Reverse geocode coordinates to get exact city name using multiple providers
+   */
+  reverseGeocode(latitude: number, longitude: number): Observable<ReverseGeocodeResult> {
+    console.log(`🌍 Reverse geocoding: ${latitude}, ${longitude}`);
+    
+    // Try multiple geocoding services in order of preference
+    return this.tryNominatimGeocoding(latitude, longitude).pipe(
+      catchError(() => {
+        console.log('📍 Nominatim failed, trying Photon...');
+        return this.tryPhotonGeocoding(latitude, longitude);
+      }),
+      catchError(() => {
+        console.log('📍 Photon failed, trying BigDataCloud...');
+        return this.tryBigDataCloudGeocoding(latitude, longitude);
+      }),
+      catchError(() => {
+        console.log('📍 All geocoding services failed, using fallback');
+        return of(this.getFallbackLocationName(latitude, longitude));
+      })
+    );
+  }
+
+  /**
+   * OpenStreetMap Nominatim reverse geocoding (primary)
+   */
+  private tryNominatimGeocoding(lat: number, lon: number): Observable<ReverseGeocodeResult> {
+    const url = `https://nominatim.openstreetmap.org/reverse`;
+    const params = new HttpParams()
+      .set('format', 'json')
+      .set('lat', lat.toString())
+      .set('lon', lon.toString())
+      .set('addressdetails', '1')
+      .set('zoom', '10');
+
+    return this.http.get<any>(url, { params }).pipe(
+      timeout(5000),
+      retry(1),
+      map(response => {
+        if (response && response.address) {
+          const addr = response.address;
+          const city = addr.city || addr.town || addr.village || addr.hamlet || 
+                      addr.suburb || addr.neighbourhood || addr.county;
+          const state = addr.state || addr.province || addr.region;
+          const country = addr.country;
+
+          if (city && country) {
+            const fullName = state ? `${city}, ${state}, ${country}` : `${city}, ${country}`;
+            return {
+              city,
+              state,
+              country,
+              fullName,
+              source: 'nominatim' as const
+            };
+          }
+        }
+        throw new Error('No valid address found');
+      })
+    );
+  }
+
+  /**
+   * Photon reverse geocoding (secondary)
+   */
+  private tryPhotonGeocoding(lat: number, lon: number): Observable<ReverseGeocodeResult> {
+    const url = `https://photon.komoot.io/reverse`;
+    const params = new HttpParams()
+      .set('lat', lat.toString())
+      .set('lon', lon.toString())
+      .set('limit', '1');
+
+    return this.http.get<any>(url, { params }).pipe(
+      timeout(5000),
+      retry(1),
+      map(response => {
+        if (response && response.features && response.features.length > 0) {
+          const props = response.features[0].properties;
+          const city = props.city || props.name || props.locality;
+          const state = props.state || props.region;
+          const country = props.country;
+
+          if (city && country) {
+            const fullName = state ? `${city}, ${state}, ${country}` : `${city}, ${country}`;
+            return {
+              city,
+              state,
+              country,
+              fullName,
+              source: 'photon' as const
+            };
+          }
+        }
+        throw new Error('No valid address found');
+      })
+    );
+  }
+
+  /**
+   * BigDataCloud reverse geocoding (tertiary)
+   */
+  private tryBigDataCloudGeocoding(lat: number, lon: number): Observable<ReverseGeocodeResult> {
+    const url = `https://api.bigdatacloud.net/data/reverse-geocode-client`;
+    const params = new HttpParams()
+      .set('latitude', lat.toString())
+      .set('longitude', lon.toString())
+      .set('localityLanguage', 'en');
+
+    return this.http.get<any>(url, { params }).pipe(
+      timeout(5000),
+      retry(1),
+      map(response => {
+        if (response) {
+          const city = response.city || response.locality || response.localityInfo?.administrative?.[3]?.name;
+          const state = response.principalSubdivision || response.localityInfo?.administrative?.[1]?.name;
+          const country = response.countryName;
+
+          if (city && country) {
+            const fullName = state ? `${city}, ${state}, ${country}` : `${city}, ${country}`;
+            return {
+              city,
+              state,
+              country,
+              fullName,
+              source: 'bigdatacloud' as const
+            };
+          }
+        }
+        throw new Error('No valid address found');
+      })
+    );
+  }
+
+  /**
+   * Fallback location name when all geocoding services fail
+   */
+  private getFallbackLocationName(lat: number, lon: number): ReverseGeocodeResult {
+    // Use the existing location name method as ultimate fallback
+    const fallbackName = this.getLocationName(lat, lon);
+    return {
+      city: fallbackName,
+      country: 'Unknown',
+      fullName: fallbackName,
+      source: 'fallback' as const
+    };
+  }
 
   /**
    * Debug method to check what's in the database
@@ -108,7 +263,7 @@ export class ClimateDataService {
   }
 
   /**
-   * Get available areas from database for user selection
+   * Get available areas from database for user selection with reverse geocoding
    */
   getAvailableAreas(limit: number = 50): Observable<EarthAreaWithClimate[]> {
     console.log('📋 Fetching available areas from NASA database...');
@@ -116,10 +271,10 @@ export class ClimateDataService {
     // For small databases, get all available data without artificial limits
     return this.http.get<any[]>(`${this.POSTGREST_URL}/lst_statistics?select=latitude,longitude,band`)
       .pipe(
-        map(data => {
+        switchMap(data => {
           if (!data || data.length === 0) {
             console.warn('⚠️ No areas found in database, using fallback areas');
-            return this.getFallbackAreas();
+            return of(this.getFallbackAreas());
           }
 
           console.log(`📊 Raw database records: ${data.length}`);
@@ -132,33 +287,96 @@ export class ClimateDataService {
           
           if (uniqueLocations.length === 0) {
             console.warn('⚠️ No unique locations found, using fallback');
-            return this.getFallbackAreas();
+            return of(this.getFallbackAreas());
           }
           
-          return uniqueLocations.map((location: {latitude: number, longitude: number}, index: number) => {
-            const locationName = this.getLocationName(location.latitude, location.longitude);
-            const climateZone = this.getClimateZone(location.latitude);
-            
-            console.log(`🏷️ Creating area ${index + 1}: ${locationName} at ${location.latitude},${location.longitude}`);
-            
-            return {
-              id: index + 1,
-              name: locationName,
-              latitude: location.latitude,
-              longitude: location.longitude,
-              dayTemperature: 0, // Will be calculated when selected
-              nightTemperature: 0, // Will be calculated when selected
-              soilType: this.getSoilType(location.latitude, location.longitude),
-              description: this.getAreaDescription(locationName, 20, climateZone),
-              climateZone
-            } as EarthAreaWithClimate;
-          });
+          // Process each location with reverse geocoding
+          return this.processLocationsWithReverseGeocoding(uniqueLocations);
         }),
         catchError(error => {
           console.error('❌ Error fetching areas:', error);
           return of(this.getFallbackAreas());
         })
       );
+  }
+
+  /**
+   * Process locations with reverse geocoding for accurate city names
+   */
+  private processLocationsWithReverseGeocoding(locations: {latitude: number, longitude: number}[]): Observable<EarthAreaWithClimate[]> {
+    console.log(`🔍 Starting reverse geocoding for ${locations.length} locations...`);
+    
+    // Create array of geocoding observables
+    const geocodeObservables = locations.map((location, index) => {
+      return this.reverseGeocode(location.latitude, location.longitude).pipe(
+        map(geocodeResult => {
+          const climateZone = this.getClimateZone(location.latitude);
+          
+          console.log(`🏷️ Creating area ${index + 1}: ${geocodeResult.fullName} (${geocodeResult.source}) at ${location.latitude},${location.longitude}`);
+          
+          return {
+            id: index + 1,
+            name: geocodeResult.fullName,
+            latitude: location.latitude,
+            longitude: location.longitude,
+            dayTemperature: 0, // Will be calculated when selected
+            nightTemperature: 0, // Will be calculated when selected
+            soilType: this.getSoilType(location.latitude, location.longitude),
+            description: this.getAreaDescription(geocodeResult.city, 20, climateZone),
+            climateZone
+          } as EarthAreaWithClimate;
+        }),
+        catchError(error => {
+          console.warn(`⚠️ Geocoding failed for ${location.latitude},${location.longitude}, using fallback`);
+          const fallbackName = this.getLocationName(location.latitude, location.longitude);
+          const climateZone = this.getClimateZone(location.latitude);
+          
+          return of({
+            id: index + 1,
+            name: fallbackName,
+            latitude: location.latitude,
+            longitude: location.longitude,
+            dayTemperature: 0,
+            nightTemperature: 0,
+            soilType: this.getSoilType(location.latitude, location.longitude),
+            description: this.getAreaDescription(fallbackName, 20, climateZone),
+            climateZone
+          } as EarthAreaWithClimate);
+        })
+      );
+    });
+
+    // Execute all geocoding requests in parallel with a delay between each
+    return new Observable(observer => {
+      const results: EarthAreaWithClimate[] = [];
+      let completed = 0;
+
+      geocodeObservables.forEach((obs, index) => {
+        // Add a small delay between requests to be respectful to geocoding services
+        setTimeout(() => {
+          obs.subscribe({
+            next: (area) => {
+              results[index] = area;
+              completed++;
+              console.log(`✅ Geocoded ${completed}/${locations.length}: ${area.name}`);
+              
+              if (completed === locations.length) {
+                observer.next(results);
+                observer.complete();
+              }
+            },
+            error: (error) => {
+              console.error(`❌ Error geocoding location ${index}:`, error);
+              completed++;
+              if (completed === locations.length) {
+                observer.next(results.filter(r => r)); // Filter out undefined results
+                observer.complete();
+              }
+            }
+          });
+        }, index * 200); // 200ms delay between requests
+      });
+    });
   }
 
   /**
@@ -395,16 +613,24 @@ export class ClimateDataService {
   }
 
   /**
-   * Process location data with enhanced real temperature calculations
+   * Process location data with enhanced real temperature calculations and reverse geocoding
    */
   private processLocationDataWithRealTemperatures(latitude: number, longitude: number): Observable<LocationData> {
-    return this.getRealDayNightTemperatures(latitude, longitude).pipe(
-      map(({dayTemp, nightTemp, avgTemp}) => {
-        const locationName = this.getLocationName(latitude, longitude);
+    // Combine temperature data and reverse geocoding
+    const temperatures$ = this.getRealDayNightTemperatures(latitude, longitude);
+    const geocoding$ = this.reverseGeocode(latitude, longitude);
+    
+    return new Observable(observer => {
+      Promise.all([
+        temperatures$.toPromise(),
+        geocoding$.toPromise()
+      ]).then(([tempData, geocodeResult]) => {
+        const { dayTemp, nightTemp, avgTemp } = tempData!;
+        const locationName = geocodeResult!.fullName;
         const climateZone = this.getClimateZone(latitude);
         
-        // Log real temperatures for debugging
-        console.log(`🌡️ Real temps for ${locationName}: Day ${dayTemp}°C, Night ${nightTemp}°C (Climate: ${climateZone})`);
+        // Log real temperatures and geocoding result
+        console.log(`🌡️ Real temps for ${locationName} (${geocodeResult!.source}): Day ${dayTemp}°C, Night ${nightTemp}°C (Climate: ${climateZone})`);
         
         const locationData: LocationData = {
           latitude,
@@ -421,7 +647,7 @@ export class ClimateDataService {
             dayTemperature: dayTemp,
             nightTemperature: nightTemp,
             soilType: this.getSoilType(latitude, longitude),
-            description: this.getAreaDescription(locationName, avgTemp, climateZone),
+            description: this.getAreaDescription(geocodeResult!.city, avgTemp, climateZone),
             climateZone
           }
         };
@@ -429,6 +655,52 @@ export class ClimateDataService {
         // Add map data
         locationData.mapData = this.getLocationMapData(locationData);
         
+        observer.next(locationData);
+        observer.complete();
+      }).catch(error => {
+        console.error('❌ Error processing location data:', error);
+        // Fallback without geocoding
+        this.processLocationDataWithoutGeocoding(latitude, longitude).subscribe({
+          next: data => observer.next(data),
+          error: err => observer.error(err),
+          complete: () => observer.complete()
+        });
+      });
+    });
+  }
+
+  /**
+   * Fallback method without geocoding
+   */
+  private processLocationDataWithoutGeocoding(latitude: number, longitude: number): Observable<LocationData> {
+    return this.getRealDayNightTemperatures(latitude, longitude).pipe(
+      map(({dayTemp, nightTemp, avgTemp}) => {
+        const locationName = this.getLocationName(latitude, longitude);
+        const climateZone = this.getClimateZone(latitude);
+        
+        console.log(`🌡️ Fallback temps for ${locationName}: Day ${dayTemp}°C, Night ${nightTemp}°C (Climate: ${climateZone})`);
+        
+        const locationData: LocationData = {
+          latitude,
+          longitude,
+          dayTemp,
+          nightTemp,
+          locationName,
+          isRevealed: false,
+          area: {
+            id: Math.floor(Math.random() * 1000),
+            name: locationName,
+            latitude,
+            longitude,
+            dayTemperature: dayTemp,
+            nightTemperature: nightTemp,
+            soilType: this.getSoilType(latitude, longitude),
+            description: this.getAreaDescription(locationName, avgTemp, climateZone),
+            climateZone
+          }
+        };
+
+        locationData.mapData = this.getLocationMapData(locationData);
         return locationData;
       })
     );
